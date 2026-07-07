@@ -15,8 +15,8 @@ FabricObject.ownDefaults.cornerSize = 8 // Sudut kecil elegan
 FabricObject.ownDefaults.borderDashArray = [4, 4] // Garis seleksi putus-putus yang rapi
 
 // Impor aset gambar kaos polos hasil generasi
-import tshirtFrontImg from '../assets/images/tshirt-front.png'
-import tshirtBackImg from '../assets/images/tshirt-back.png'
+import tshirtFrontImg from '../assets/images/tshirtFront.png'
+import tshirtBackImg from '../assets/images/tshirtBack.png'
 
 const store = useConfiguratorStore()
 
@@ -26,6 +26,8 @@ let fabricCanvas: Canvas | null = null
 const isProcessing = ref(true)
 const currentMockupUrl = ref('')
 const selectedObject = ref<any>(null)
+const displayedView = ref<'front' | 'back'>(store.currentView)
+const isFlipping = ref(false)
 
 // Menangani hapus objek lewat tombol Keyboard (Delete / Backspace)
 const handleKeyDown = (e: KeyboardEvent) => {
@@ -67,7 +69,7 @@ const canvasConfigs = {
 
 // Menghitung gaya letak area sablon di UI secara absolute
 const printableAreaStyle = computed(() => {
-  const config = canvasConfigs[store.currentView]
+  const config = canvasConfigs[displayedView.value]
   return {
     top: `${(config.top / 500) * 100}%`,
     left: `${(config.left / 500) * 100}%`,
@@ -92,9 +94,9 @@ const initMockupImages = async () => {
 
 // Memperbarui warna kaos secara dinamis berdasarkan state store
 const updateMockupColor = () => {
-  if (store.currentView === 'front' && processedFront) {
+  if (displayedView.value === 'front' && processedFront) {
     currentMockupUrl.value = colorizeMockup(processedFront, store.shirtColor)
-  } else if (store.currentView === 'back' && processedBack) {
+  } else if (displayedView.value === 'back' && processedBack) {
     currentMockupUrl.value = colorizeMockup(processedBack, store.shirtColor)
   }
 }
@@ -103,7 +105,7 @@ const updateMockupColor = () => {
 const initFabricCanvas = () => {
   if (!canvasRef.value) return
 
-  const config = canvasConfigs[store.currentView]
+  const config = canvasConfigs[displayedView.value]
   fabricCanvas = new Canvas(canvasRef.value, {
     width: config.width,
     height: config.height,
@@ -132,7 +134,7 @@ const initCanvasEvents = () => {
 // Menyimpan state kanvas saat ini ke Pinia
 const saveCurrentState = () => {
   if (fabricCanvas) {
-    store.saveCanvasState(store.currentView, fabricCanvas.toJSON())
+    store.saveCanvasState(displayedView.value, fabricCanvas.toJSON())
   }
 }
 
@@ -165,22 +167,38 @@ const resizeCanvas = (view: 'front' | 'back') => {
   fabricCanvas.renderAll()
 }
 
-// Watcher untuk mendeteksi perubahan sisi kaos
+// Watcher untuk mendeteksi perubahan sisi kaos dengan efek flip 3D
 watch(
   () => store.currentView,
   async (newView, oldView) => {
     if (oldView) {
-      saveCurrentState()
+      // Simpan state kanvas untuk view lama (oldView) sebelum diubah
+      if (fabricCanvas) {
+        store.saveCanvasState(oldView, fabricCanvas.toJSON())
+      }
     }
-    updateMockupColor()
-    resizeCanvas(newView)
-    await loadStateForView(newView)
-    // Clear selection
-    if (fabricCanvas) {
-      fabricCanvas.discardActiveObject()
-      fabricCanvas.renderAll()
-      selectedObject.value = null
-    }
+    
+    isFlipping.value = true
+    
+    // Jeda 300ms (di tengah putaran 90 derajat) untuk memperbarui tampilan
+    setTimeout(async () => {
+      displayedView.value = newView
+      updateMockupColor()
+      resizeCanvas(newView)
+      await loadStateForView(newView)
+      
+      // Bersihkan seleksi objek
+      if (fabricCanvas) {
+        fabricCanvas.discardActiveObject()
+        fabricCanvas.renderAll()
+        selectedObject.value = null
+      }
+    }, 300)
+
+    // Selesaikan animasi flipping setelah 600ms
+    setTimeout(() => {
+      isFlipping.value = false
+    }, 600)
   }
 )
 
@@ -215,7 +233,7 @@ onUnmounted(() => {
 
 const addText = (textVal: string, color = '#000000', fontFamily = 'Inter') => {
   if (!fabricCanvas) return
-  const config = canvasConfigs[store.currentView]
+  const config = canvasConfigs[displayedView.value]
   
   const text = new IText(textVal, {
     left: config.width / 2 - 50,
@@ -233,7 +251,7 @@ const addText = (textVal: string, color = '#000000', fontFamily = 'Inter') => {
 
 const addImage = (source: File | string) => {
   if (!fabricCanvas) return
-  const config = canvasConfigs[store.currentView]
+  const config = canvasConfigs[displayedView.value]
   
   const loadAndAddToCanvas = (url: string) => {
     const imgEl = new Image()
@@ -424,7 +442,7 @@ const exportMockup = (): Promise<string> => {
       const canvasImg = new Image()
       canvasImg.src = fabricCanvas!.toDataURL({ format: 'png', multiplier: 1 })
       canvasImg.onload = () => {
-        const config = canvasConfigs[store.currentView]
+        const config = canvasConfigs[displayedView.value]
         
         // Sesuaikan skala koordinat jika ukuran asli berbeda dari 500x500
         const scaleX = img.width / 500
@@ -509,7 +527,7 @@ defineExpose({
   <div class="flex flex-col items-center justify-center p-2 w-full">
     <!-- Container Mockup Kaos -->
     <div 
-      class="relative w-[500px] h-[500px] rounded-3xl flex items-center justify-center overflow-hidden border border-sky-100 transition-all duration-300 shadow-lg bg-white"
+      class="relative w-[500px] h-[500px] rounded-3xl flex items-center justify-center overflow-hidden border border-sky-100 transition-all duration-300 shadow-lg bg-white perspective-1000"
       :class="{
         'bg-checkerboard-light': store.backdropType === 'checkerboard',
         'bg-studio-wall': store.backdropType === 'gradient'
@@ -523,29 +541,35 @@ defineExpose({
         <span class="text-slate-700 text-sm font-semibold tracking-wide">Menghapus background mockup...</span>
       </div>
 
-      <!-- Lapisan Kaos Mockup (Dengan filter drop-shadow agar kaos terlihat timbul 3D) -->
-      <img
-        v-if="currentMockupUrl"
-        :src="currentMockupUrl"
-        class="absolute inset-0 w-full h-full object-contain pointer-events-none select-none filter drop-shadow-[0_25px_35px_rgba(0,0,0,0.18)]"
-        alt="Mockup Kaos"
-      />
-
-      <!-- Area Bounding Box / Sablon (Konsisten dengan tema Sky Blue) -->
-      <div
-        class="absolute border border-dashed border-sky-400/30 rounded-xl flex items-center justify-center bg-white/[0.01] hover:border-sky-500/60 hover:bg-sky-500/[0.02] transition-all duration-300 group/area"
-        :class="{ 'border-sky-500/65 bg-sky-500/[0.01] shadow-[0_0_20px_rgba(14,165,233,0.1)]': selectedObject }"
-        :style="printableAreaStyle"
+      <!-- Pembungkus Kaos + Sablon untuk Efek Flip 3D -->
+      <div 
+        class="absolute inset-0 w-full h-full flex items-center justify-center transform-style-3d pointer-events-none"
+        :class="{ 'animate-flip-3d': isFlipping }"
       >
-        <canvas ref="canvasRef"></canvas>
-        
-        <!-- Label Area Cetak (Muncul saat tidak ada objek yang dipilih) -->
-        <span 
-          v-if="!selectedObject" 
-          class="absolute bottom-2 text-[8px] bg-white text-sky-850 border border-sky-200 px-2 py-0.5 backdrop-blur-sm rounded-md pointer-events-none tracking-widest uppercase font-black shadow-sm"
+        <!-- Lapisan Kaos Mockup (Dengan filter drop-shadow agar kaos terlihat timbul 3D) -->
+        <img
+          v-if="currentMockupUrl"
+          :src="currentMockupUrl"
+          class="absolute inset-0 w-full h-full object-contain pointer-events-none select-none filter drop-shadow-[0_25px_35px_rgba(0,0,0,0.18)] backface-hidden"
+          alt="Mockup Kaos"
+        />
+
+        <!-- Area Bounding Box / Sablon (Konsisten dengan tema Sky Blue) -->
+        <div
+          class="absolute border border-dashed border-sky-400/30 rounded-xl flex items-center justify-center bg-white/[0.01] hover:border-sky-500/60 hover:bg-sky-500/[0.02] transition-all duration-300 group/area backface-hidden pointer-events-auto"
+          :class="{ 'border-sky-500/65 bg-sky-500/[0.01] shadow-[0_0_20px_rgba(14,165,233,0.1)]': selectedObject }"
+          :style="printableAreaStyle"
         >
-          Area Sablon
-        </span>
+          <canvas ref="canvasRef"></canvas>
+          
+          <!-- Label Area Cetak (Muncul saat tidak ada objek yang dipilih) -->
+          <span 
+            v-if="!selectedObject" 
+            class="absolute bottom-2 text-[8px] bg-white text-sky-850 border border-sky-200 px-2 py-0.5 backdrop-blur-sm rounded-md pointer-events-none tracking-widest uppercase font-black shadow-sm"
+          >
+            Area Sablon
+          </span>
+        </div>
       </div>
 
       <!-- Tombol Hapus Melayang untuk Akses Cepat / Layar Sentuh (Light Glassmorphism Red Accent) -->
@@ -594,5 +618,40 @@ defineExpose({
 /* Latar belakang dinding studio semen bersih (radial vignette) */
 .bg-studio-wall {
   background: radial-gradient(circle, #f8fafc 0%, #cbd5e1 100%);
+}
+
+/* Kelas Perspektif 3D pada container */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+/* Mempertahankan ruang 3D untuk child element */
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+/* Menyembunyikan sisi belakang elemen saat berputar */
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+/* Keyframes untuk Animasi Putar 3D (Horizontal Flip 90 derajat dan kembali) */
+@keyframes flip-half {
+  0% {
+    transform: rotateY(0deg) scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: rotateY(90deg) scale(0.92);
+    filter: brightness(0.85); /* Beri sedikit bayangan redup di titik tengah putaran */
+  }
+  100% {
+    transform: rotateY(0deg) scale(1);
+    filter: brightness(1);
+  }
+}
+
+.animate-flip-3d {
+  animation: flip-half 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 </style>
