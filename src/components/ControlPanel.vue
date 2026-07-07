@@ -175,8 +175,8 @@ const handleBackdropUpload = (event: Event) => {
     const reader = new FileReader()
     reader.onload = (e) => {
       const url = e.target?.result as string
-      store.setCustomBackdropUrl(url)
-      store.setBackdropType('custom')
+      store.customBackdropUrl = url
+      store.backdropType = 'custom'
     }
     reader.readAsDataURL(file)
   }
@@ -220,7 +220,7 @@ const onDrop = (e: DragEvent) => {
         <label class="block text-[10px] uppercase font-bold text-slate-500 mb-2 tracking-wide">Pilih Tampilan Sisi:</label>
         <div class="grid grid-cols-2 gap-1 bg-slate-50 p-1 rounded-xl border border-sky-100">
           <button
-            @click="store.setView('front')"
+            @click="store.currentView = 'front'"
             :class="[
               'py-2 px-3 text-xs font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2',
               store.currentView === 'front'
@@ -231,7 +231,7 @@ const onDrop = (e: DragEvent) => {
             Tampak Depan
           </button>
           <button
-            @click="store.setView('back')"
+            @click="store.currentView = 'back'"
             :class="[
               'py-2 px-3 text-xs font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2',
               store.currentView === 'back'
@@ -251,7 +251,7 @@ const onDrop = (e: DragEvent) => {
           <button
             v-for="color in presetColors"
             :key="color.hex"
-            @click="store.setShirtColor(color.hex)"
+            @click="store.shirtColor = color.hex"
             :title="color.name"
             :class="[
               'w-8 h-8 rounded-full border border-slate-200 transition-all duration-300 relative hover:scale-115 focus:outline-none flex items-center justify-center',
@@ -282,7 +282,7 @@ const onDrop = (e: DragEvent) => {
             <input
               type="color"
               :value="store.shirtColor"
-              @input="(e) => store.setShirtColor((e.target as HTMLInputElement).value)"
+              @input="(e) => store.shirtColor = (e.target as HTMLInputElement).value"
               class="absolute w-[150%] h-[150%] cursor-pointer border-0 p-0 bg-transparent"
               title="Custom Color"
             />
@@ -499,7 +499,7 @@ const onDrop = (e: DragEvent) => {
           <button
             v-for="type in (['solid', 'checkerboard', 'gradient', 'custom'] as const)"
             :key="type"
-            @click="store.setBackdropType(type)"
+            @click="store.backdropType = type"
             :class="[
               'py-2 px-1 text-[9px] font-black rounded-lg capitalize transition-all duration-300 flex flex-col items-center justify-center gap-1',
               store.backdropType === type
@@ -526,13 +526,13 @@ const onDrop = (e: DragEvent) => {
             <input
               type="color"
               :value="store.backdropColor"
-              @input="(e) => store.setBackdropColor((e.target as HTMLInputElement).value)"
+              @input="(e) => store.backdropColor = (e.target as HTMLInputElement).value"
               class="absolute w-[150%] h-[150%] cursor-pointer border-0 p-0 bg-transparent"
             />
           </div>
           <span class="text-xs font-mono uppercase text-slate-700 font-bold tracking-wider">{{ store.backdropColor }}</span>
           <button
-            @click="store.setBackdropColor('#0f172a')"
+            @click="store.backdropColor = '#0f172a'"
             class="text-[9px] font-bold uppercase tracking-wider py-1.5 px-3 border border-slate-200 hover:border-slate-300 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors"
           >
             Reset
@@ -564,7 +564,7 @@ const onDrop = (e: DragEvent) => {
             <span class="text-[10px] font-bold text-slate-500">Gambar terpasang</span>
           </div>
           <button
-            @click="store.setCustomBackdropUrl(null)"
+            @click="store.customBackdropUrl = null"
             class="text-[10px] font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-all"
           >
             Hapus

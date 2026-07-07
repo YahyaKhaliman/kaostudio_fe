@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref, watch, computed, nextTick } from 'vue'
 import { Canvas, IText, FabricImage, FabricObject } from 'fabric'
 import { useConfiguratorStore } from '../stores/configurator'
-import { processMockupImage, colorizeMockup, type ProcessedMockup } from '../utils/mockupProcessor'
+import { processMockupImage, colorizeMockup } from '../utils/mockupProcessor'
 import { PhSpinner, PhCursorClick, PhTrash } from '@phosphor-icons/vue'
 
 // Kustomisasi visual garis bantu (bounding box) & tombol kontrol Fabric.js agar bertema premium
@@ -30,13 +30,8 @@ const selectedObject = ref<any>(null)
 // Menangani hapus objek lewat tombol Keyboard (Delete / Backspace)
 const handleKeyDown = (e: KeyboardEvent) => {
   // Cegah penghapusan jika pengguna sedang mengetik di input form luar
-  const activeEl = document.activeElement
-  const isTypingInInput = activeEl && (
-    activeEl.tagName === 'INPUT' || 
-    activeEl.tagName === 'TEXTAREA' || 
-    activeEl.getAttribute('contenteditable') !== null
-  )
-  if (isTypingInInput) return
+  const activeEl = document.activeElement as HTMLElement | null
+  if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) return
 
   if (e.key === 'Delete' || e.key === 'Backspace') {
     // Cegah penghapusan jika pengguna sedang mengedit teks di dalam canvas Fabric
@@ -51,8 +46,8 @@ const handleKeyDown = (e: KeyboardEvent) => {
 }
 
 // Menyimpan referensi mockup hasil pre-proses
-let processedFront: ProcessedMockup | null = null
-let processedBack: ProcessedMockup | null = null
+let processedFront: HTMLCanvasElement | null = null
+let processedBack: HTMLCanvasElement | null = null
 
 // Konfigurasi letak dan ukuran area sablon (chest area) pada canvas mockup 500x500px
 const canvasConfigs = {

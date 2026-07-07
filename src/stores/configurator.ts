@@ -26,28 +26,8 @@ export const useConfiguratorStore = defineStore('configurator', () => {
     originalSize: number
   }[]>([])
 
-  const setView = (view: ViewType) => {
-    currentView.value = view
-  }
-
-  const setShirtColor = (color: string) => {
-    shirtColor.value = color
-  }
-
   const saveCanvasState = (view: ViewType, jsonState: any) => {
     canvasStates.value[view] = jsonState
-  }
-
-  const setBackdropType = (type: 'solid' | 'checkerboard' | 'gradient' | 'custom') => {
-    backdropType.value = type
-  }
-
-  const setBackdropColor = (color: string) => {
-    backdropColor.value = color
-  }
-
-  const setCustomBackdropUrl = (url: string | null) => {
-    customBackdropUrl.value = url
   }
 
   const addUploadedImage = (name: string, dataUrl: string, size: number, originalSize: number) => {
@@ -89,12 +69,7 @@ export const useConfiguratorStore = defineStore('configurator', () => {
     backdropColor,
     customBackdropUrl,
     uploadedImages,
-    setView,
-    setShirtColor,
     saveCanvasState,
-    setBackdropType,
-    setBackdropColor,
-    setCustomBackdropUrl,
     addUploadedImage,
     removeUploadedImage,
     resetStore

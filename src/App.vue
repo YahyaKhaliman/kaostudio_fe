@@ -100,7 +100,7 @@ const handleDeselectObject = () => {
         </div>
         <div>
           <h1 class="text-lg font-extrabold tracking-tight text-sky-950">
-            SablonConfig 2D
+            KaoStudio
           </h1>
           <p class="text-[10px] text-slate-500 font-medium tracking-wide">Premium Clothing Mockup & Sablon Editor</p>
         </div>
@@ -155,7 +155,7 @@ const handleDeselectObject = () => {
     <!-- Footer -->
     <footer class="bg-sky-950 py-5 px-6 text-center text-xs text-sky-300 relative z-10">
       <p class="font-medium tracking-wide">
-        &copy; 2026 <span class="text-white font-bold">SablonConfig 2D</span>. Dibuat dengan Vue 3, Pinia, Tailwind CSS & Fabric.js.
+        &copy; 2026 <span class="text-white font-bold">KaoStudio</span>. Dibuat dengan Vue 3, Pinia, Tailwind CSS & Fabric.js.
       </p>
     </footer>
   </div>
