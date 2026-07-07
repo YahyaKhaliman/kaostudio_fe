@@ -1,12 +1,58 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import ConfiguratorCanvas from "./components/configuratorCanvas.vue";
 import ControlPanel from "./components/controlPanel.vue";
-import { PhTShirt, PhQuestion, PhX } from "@phosphor-icons/vue";
+import { PhTShirt, PhQuestion, PhX, PhSun, PhMoon } from "@phosphor-icons/vue";
+import { useConfiguratorStore } from "./stores/configurator";
 
 const showGuide = ref(false);
+const store = useConfiguratorStore();
+
+const isDarkMode = ref(false);
+
+const toggleDarkMode = () => {
+    isDarkMode.value = !isDarkMode.value;
+    updateDarkClass();
+};
+
+const updateDarkClass = () => {
+    if (isDarkMode.value) {
+        document.documentElement.classList.add("dark");
+        localStorage.setItem("kaostudio_darkmode", "true");
+    } else {
+        document.documentElement.classList.remove("dark");
+        localStorage.setItem("kaostudio_darkmode", "false");
+    }
+};
 
 const canvasRef = ref<InstanceType<typeof ConfiguratorCanvas> | null>(null);
+
+// Mencegah refresh halaman secara tidak sengaja jika terdapat perubahan desain aktif
+const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    if (store.isFrontDirty || store.isBackDirty) {
+        e.preventDefault();
+        e.returnValue = ""; // Mengaktifkan dialog konfirmasi standar di sebagian besar browser modern
+        return "";
+    }
+};
+
+onMounted(() => {
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    
+    // Muat preferensi mode gelap
+    const savedDark = localStorage.getItem("kaostudio_darkmode");
+    if (savedDark === "true") {
+        isDarkMode.value = true;
+    } else if (!savedDark) {
+        // Fallback ke preferensi sistem OS
+        isDarkMode.value = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    updateDarkClass();
+});
+
+onUnmounted(() => {
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+});
 
 // Menghubungkan event callback manipulasi objek ke Canvas
 const handleAddText = (text: string, color: string, font: string) => {
@@ -46,36 +92,36 @@ const handleUpdateFontSize = (size: number) => {
 };
 
 // Menangani ekspor gambar mockup lengkap
-const handleExportMockup = async () => {
+const handleExportMockup = async (view: "front" | "back" | "both") => {
     if (!canvasRef.value) return;
     try {
-        const dataUrl = await canvasRef.value.exportMockup();
-        if (!dataUrl) return;
-
-        const link = document.createElement("a");
-        link.download = `mockup-kaos-${Date.now()}.jpg`;
-        link.href = dataUrl;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const files = await canvasRef.value.exportMockup(view);
+        files.forEach((file) => {
+            const link = document.createElement("a");
+            link.download = file.name;
+            link.href = file.dataUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
     } catch (error) {
         console.error("Gagal mengekspor mockup:", error);
     }
 };
 
 // Menangani ekspor desain sablon saja (transparan)
-const handleExportPrint = () => {
+const handleExportPrint = async (view: "front" | "back" | "both") => {
     if (!canvasRef.value) return;
     try {
-        const dataUrl = canvasRef.value.exportPrint();
-        if (!dataUrl) return;
-
-        const link = document.createElement("a");
-        link.download = `desain-sablon-${Date.now()}.png`;
-        link.href = dataUrl;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const files = await canvasRef.value.exportPrint(view);
+        files.forEach((file) => {
+            const link = document.createElement("a");
+            link.download = file.name;
+            link.href = file.dataUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
     } catch (error) {
         console.error("Gagal mengekspor desain cetak:", error);
     }
@@ -89,45 +135,56 @@ const handleDeselectObject = () => {
 
 <template>
     <div
-        class="min-h-screen bg-gradient-to-b from-sky-200 via-sky-500 to-sky-700 text-slate-800 flex flex-col font-sans relative overflow-hidden selection:bg-sky-500/30 selection:text-sky-900"
+        class="min-h-screen bg-gradient-to-b from-sky-200 via-sky-500 to-sky-700 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 text-slate-800 dark:text-slate-100 flex flex-col font-sans relative overflow-hidden selection:bg-sky-500/30 selection:text-sky-900 dark:selection:bg-sky-500/20 dark:selection:text-sky-300 transition-colors duration-300"
     >
         <!-- Ambient Light Highlights (Studio brightness) -->
         <div
-            class="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-white/20 blur-[120px] pointer-events-none"
+            class="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-white/20 dark:bg-sky-500/10 blur-[120px] pointer-events-none"
         ></div>
         <div
-            class="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-white/10 blur-[150px] pointer-events-none"
+            class="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-white/10 dark:bg-indigo-500/10 blur-[150px] pointer-events-none"
         ></div>
 
         <!-- Navbar / Header -->
         <header
-            class="bg-white/85 border-b border-sky-100 px-6 py-4 flex items-center justify-between shadow-md backdrop-blur-md sticky top-0 z-50"
+            class="bg-white/85 dark:bg-slate-900/85 border border-sky-100/50 dark:border-slate-800/80 px-6 py-3.5 flex items-center justify-between shadow-lg dark:shadow-slate-950/30 backdrop-blur-md sticky top-4 z-50 max-w-7xl mx-auto w-[calc(100%-2rem)] rounded-2xl transition-all duration-300"
         >
             <div class="flex items-center space-x-3.5">
-                <!-- Logo Vektor Premium -->
-                <div
-                    class="bg-gradient-to-tr from-sky-600 to-indigo-600 p-2.5 rounded-xl text-white font-black text-xl tracking-wider shadow-md shadow-sky-900/20 border border-sky-500/10 flex items-center justify-center"
-                >
-                    <PhTShirt :size="24" weight="bold" />
-                </div>
+                <!-- Logo Gambar Kaosan -->
+                <img
+                    src="/kaosan.png"
+                    alt="Logo Kaosan"
+                    class="w-10 h-10 object-contain rounded-xl shadow-md border border-sky-100/30 dark:border-slate-800 bg-white/5"
+                />
                 <div>
                     <h1
-                        class="text-lg font-extrabold tracking-tight text-sky-950"
+                        class="text-lg font-extrabold tracking-tight text-sky-950 dark:text-white"
                     >
-                        KaoStudio
+                        Kaosan
                     </h1>
                     <p
-                        class="text-[10px] text-slate-500 font-medium tracking-wide"
+                        class="text-[10px] text-slate-500 dark:text-slate-400 font-medium tracking-wide"
                     >
                         Premium Clothing Mockup & Sablon Editor
                     </p>
                 </div>
             </div>
 
-            <div>
+            <div class="flex items-center space-x-2">
+                <!-- Tombol Mode Gelap -->
+                <button
+                    @click="toggleDarkMode"
+                    class="text-sky-800 hover:text-sky-950 dark:text-sky-200 dark:hover:text-white transition-all duration-250 w-10 h-10 rounded-xl border border-sky-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-slate-650 bg-sky-50/85 dark:bg-slate-800/80 hover:bg-sky-100/95 dark:hover:bg-slate-750/90 flex items-center justify-center shadow-sm relative group active:scale-95 cursor-pointer"
+                    :title="isDarkMode ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'"
+                >
+                    <PhSun v-if="isDarkMode" :size="20" weight="bold" class="text-amber-400" />
+                    <PhMoon v-else :size="20" weight="bold" class="text-sky-800" />
+                </button>
+
+                <!-- Tombol Panduan Cara Penggunaan -->
                 <button
                     @click="showGuide = true"
-                    class="text-sky-800 hover:text-sky-950 transition-all duration-250 w-10 h-10 rounded-xl border border-sky-200 hover:border-sky-300 bg-sky-50/85 hover:bg-sky-100/95 flex items-center justify-center shadow-sm relative group active:scale-95 cursor-pointer"
+                    class="text-sky-800 hover:text-sky-950 dark:text-sky-200 dark:hover:text-white transition-all duration-250 w-10 h-10 rounded-xl border border-sky-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-slate-650 bg-sky-50/85 dark:bg-slate-800/80 hover:bg-sky-100/95 dark:hover:bg-slate-750/90 flex items-center justify-center shadow-sm relative group active:scale-95 cursor-pointer"
                     title="Panduan Cara Penggunaan"
                 >
                     <PhQuestion :size="20" weight="bold" />
@@ -188,7 +245,7 @@ const handleDeselectObject = () => {
             >
                 <!-- Modal Content Container -->
                 <div
-                    class="bg-white/95 border border-sky-100 rounded-3xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl p-6 md:p-8 relative flex flex-col gap-6 text-slate-800 animate-in fade-in zoom-in-95 duration-250"
+                    class="bg-white/95 dark:bg-slate-900/95 border border-sky-100 dark:border-slate-800 rounded-3xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl p-6 md:p-8 relative flex flex-col gap-6 text-slate-800 dark:text-slate-200 animate-in fade-in zoom-in-95 duration-250"
                 >
                     <!-- Close Button -->
                     <button
@@ -201,7 +258,7 @@ const handleDeselectObject = () => {
 
                     <!-- Modal Header -->
                     <div
-                        class="flex items-center gap-3.5 border-b border-sky-100/80 pb-4.5"
+                        class="flex items-center gap-3.5 border-b border-sky-100/80 dark:border-slate-800 pb-4.5"
                     >
                         <div
                             class="bg-gradient-to-tr from-sky-600 to-indigo-600 p-2.5 rounded-xl text-white shadow-md shadow-sky-600/20 flex items-center justify-center"
@@ -210,11 +267,11 @@ const handleDeselectObject = () => {
                         </div>
                         <div>
                             <h2
-                                class="text-xl font-extrabold tracking-tight text-sky-950"
+                                class="text-xl font-extrabold tracking-tight text-sky-950 dark:text-white"
                             >
                                 Panduan Penggunaan KaoStudio
                             </h2>
-                            <p class="text-xs text-slate-500 font-semibold">
+                            <p class="text-xs text-slate-500 dark:text-slate-400 font-semibold">
                                 Langkah mudah mendesain sablon kaos Anda sendiri
                             </p>
                         </div>
@@ -381,11 +438,11 @@ const handleDeselectObject = () => {
 
         <!-- Footer -->
         <footer
-            class="bg-sky-950 py-5 px-6 text-center text-xs text-sky-300 relative z-10"
+            class="bg-transparent py-5 px-6 text-center text-xs text-sky-300 relative z-10"
         >
             <p class="font-medium tracking-wide">
-                &copy; 2026 <span class="text-white font-bold">KaoStudio</span>.
-                Dibuat dengan Vue 3, Pinia, Tailwind CSS & Fabric.js.
+                &copy; 2026
+                <span class="text-white font-bold">KaoStudio</span>.
             </p>
         </footer>
     </div>

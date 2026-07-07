@@ -1,17 +1,39 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-export type ViewType = 'front' | 'back'
+export type ViewType = 'front' | 'back' | 'both'
+export type CanvasViewType = 'front' | 'back'
 
 export const useConfiguratorStore = defineStore('configurator', () => {
   const currentView = ref<ViewType>('front')
   const shirtColor = ref<string>('#ffffff') // default white
   
   // Menyimpan state JSON Fabric.js untuk masing-masing view (depan & belakang)
-  const canvasStates = ref<Record<ViewType, any>>({
+  const canvasStates = ref<Record<CanvasViewType, any>>({
     front: null,
     back: null
   })
+
+  // Menyimpan data URL PNG desain sablon transparan untuk rendering preview statis kedua sisi
+  const frontDesignUrl = ref<string | null>(null)
+  const backDesignUrl = ref<string | null>(null)
+
+  // Menyimpan status modifikasi/keberadaan objek sablon pada masing-masing sisi
+  const isFrontDirty = ref(false)
+  const isBackDirty = ref(false)
+
+  // Panduan ukuran kaos perusahaan
+  const shirtSizes = {
+    S: { length: 67, width: 47 },
+    M: { length: 69, width: 49 },
+    L: { length: 71, width: 51 },
+    XL: { length: 73, width: 53 },
+    XXL: { length: 75, width: 55 },
+    XXXL: { length: 77, width: 57 }
+  }
+
+  // Menyimpan ukuran kaos aktif (S, M, L, XL, XXL, XXXL)
+  const currentSize = ref<'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL'>('L')
 
   const backdropType = ref<'solid' | 'checkerboard' | 'gradient' | 'custom'>('gradient')
   const backdropColor = ref<string>('#0f172a') // default dark slate
@@ -26,7 +48,7 @@ export const useConfiguratorStore = defineStore('configurator', () => {
     originalSize: number
   }[]>([])
 
-  const saveCanvasState = (view: ViewType, jsonState: any) => {
+  const saveCanvasState = (view: CanvasViewType, jsonState: any) => {
     canvasStates.value[view] = jsonState
   }
 
@@ -48,6 +70,40 @@ export const useConfiguratorStore = defineStore('configurator', () => {
     uploadedImages.value = uploadedImages.value.filter((img) => img.id !== id)
   }
 
+  const saveToLocalStorage = () => {
+    const dataToSave = {
+      shirtColor: shirtColor.value,
+      backdropType: backdropType.value,
+      backdropColor: backdropColor.value,
+      customBackdropUrl: customBackdropUrl.value,
+      currentSize: currentSize.value,
+      canvasStates: canvasStates.value
+    }
+    localStorage.setItem('kaostudio_autosave', JSON.stringify(dataToSave))
+  }
+
+  const loadFromLocalStorage = () => {
+    const saved = localStorage.getItem('kaostudio_autosave')
+    if (saved) {
+      try {
+        const data = JSON.parse(saved)
+        if (data.shirtColor) shirtColor.value = data.shirtColor
+        if (data.backdropType) backdropType.value = data.backdropType
+        if (data.backdropColor) backdropColor.value = data.backdropColor
+        if (data.customBackdropUrl) customBackdropUrl.value = data.customBackdropUrl
+        if (data.currentSize) currentSize.value = data.currentSize
+        if (data.canvasStates) {
+          canvasStates.value.front = data.canvasStates.front || null
+          canvasStates.value.back = data.canvasStates.back || null
+        }
+        isFrontDirty.value = !!(canvasStates.value.front && canvasStates.value.front.objects && canvasStates.value.front.objects.length > 0)
+        isBackDirty.value = !!(canvasStates.value.back && canvasStates.value.back.objects && canvasStates.value.back.objects.length > 0)
+      } catch (e) {
+        console.error('Gagal memulihkan auto-save:', e)
+      }
+    }
+  }
+
   const resetStore = () => {
     currentView.value = 'front'
     shirtColor.value = '#ffffff'
@@ -58,13 +114,25 @@ export const useConfiguratorStore = defineStore('configurator', () => {
       front: null,
       back: null
     }
+    frontDesignUrl.value = null
+    backDesignUrl.value = null
+    isFrontDirty.value = false
+    isBackDirty.value = false
+    currentSize.value = 'L'
     uploadedImages.value = []
+    localStorage.removeItem('kaostudio_autosave')
   }
 
   return {
     currentView,
     shirtColor,
     canvasStates,
+    frontDesignUrl,
+    backDesignUrl,
+    isFrontDirty,
+    isBackDirty,
+    currentSize,
+    shirtSizes,
     backdropType,
     backdropColor,
     customBackdropUrl,
@@ -72,6 +140,8 @@ export const useConfiguratorStore = defineStore('configurator', () => {
     saveCanvasState,
     addUploadedImage,
     removeUploadedImage,
+    saveToLocalStorage,
+    loadFromLocalStorage,
     resetStore
   }
 })
