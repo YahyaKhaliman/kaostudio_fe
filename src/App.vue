@@ -38,14 +38,16 @@ const handleBeforeUnload = (e: BeforeUnloadEvent) => {
 
 onMounted(() => {
     window.addEventListener("beforeunload", handleBeforeUnload);
-    
+
     // Muat preferensi mode gelap
     const savedDark = localStorage.getItem("kaostudio_darkmode");
     if (savedDark === "true") {
         isDarkMode.value = true;
     } else if (!savedDark) {
         // Fallback ke preferensi sistem OS
-        isDarkMode.value = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        isDarkMode.value = window.matchMedia(
+            "(prefers-color-scheme: dark)",
+        ).matches;
     }
     updateDarkClass();
 });
@@ -160,7 +162,7 @@ const handleDeselectObject = () => {
                     <h1
                         class="text-lg font-extrabold tracking-tight text-sky-950 dark:text-white"
                     >
-                        Kaosan
+                        KaoStudio
                     </h1>
                     <p
                         class="text-[10px] text-slate-500 dark:text-slate-400 font-medium tracking-wide"
@@ -175,10 +177,24 @@ const handleDeselectObject = () => {
                 <button
                     @click="toggleDarkMode"
                     class="text-sky-800 hover:text-sky-950 dark:text-sky-200 dark:hover:text-white transition-all duration-250 w-10 h-10 rounded-xl border border-sky-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-slate-650 bg-sky-50/85 dark:bg-slate-800/80 hover:bg-sky-100/95 dark:hover:bg-slate-750/90 flex items-center justify-center shadow-sm relative group active:scale-95 cursor-pointer"
-                    :title="isDarkMode ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'"
+                    :title="
+                        isDarkMode
+                            ? 'Beralih ke Mode Terang'
+                            : 'Beralih ke Mode Gelap'
+                    "
                 >
-                    <PhSun v-if="isDarkMode" :size="20" weight="bold" class="text-amber-400" />
-                    <PhMoon v-else :size="20" weight="bold" class="text-sky-800" />
+                    <PhSun
+                        v-if="isDarkMode"
+                        :size="20"
+                        weight="bold"
+                        class="text-amber-400"
+                    />
+                    <PhMoon
+                        v-else
+                        :size="20"
+                        weight="bold"
+                        class="text-sky-800"
+                    />
                 </button>
 
                 <!-- Tombol Panduan Cara Penggunaan -->
@@ -271,7 +287,9 @@ const handleDeselectObject = () => {
                             >
                                 Panduan Penggunaan KaoStudio
                             </h2>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 font-semibold">
+                            <p
+                                class="text-xs text-slate-500 dark:text-slate-400 font-semibold"
+                            >
                                 Langkah mudah mendesain sablon kaos Anda sendiri
                             </p>
                         </div>
