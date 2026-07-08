@@ -30,6 +30,25 @@ FabricObject.ownDefaults.borderDashArray = [4, 4]; // Garis seleksi putus-putus 
 // Impor aset gambar kaos polos hasil generasi
 import tshirtFrontImg from "../assets/images/tshirtFront.png";
 import tshirtBackImg from "../assets/images/tshirtBack.png";
+import longTshirtFrontImg from "../assets/images/longTshirtFront.png";
+import longTshirtBackImg from "../assets/images/longTshirtBack.png";
+import poloFrontImg from "../assets/images/poloFront.png";
+import poloBackImg from "../assets/images/poloBack.png";
+
+const shirtImages = {
+    tshirt: {
+        front: tshirtFrontImg,
+        back: tshirtBackImg,
+    },
+    longTshirt: {
+        front: longTshirtFrontImg,
+        back: longTshirtBackImg,
+    },
+    polo: {
+        front: poloFrontImg,
+        back: poloBackImg,
+    },
+};
 
 const store = useConfiguratorStore();
 
@@ -298,14 +317,14 @@ const frontMockupUrl = computed(() => {
     if (processedFront) {
         return colorizeMockup(processedFront, store.shirtColor);
     }
-    return tshirtFrontImg;
+    return shirtImages[store.currentShirtType].front;
 });
 
 const backMockupUrl = computed(() => {
     if (processedBack) {
         return colorizeMockup(processedBack, store.shirtColor);
     }
-    return tshirtBackImg;
+    return shirtImages[store.currentShirtType].back;
 });
 
 // Fungsi helper untuk menghitung area cetak dengan ukuran fleksibel (untuk mode preview 320px)
@@ -342,8 +361,9 @@ const printableAreaStyle = computed(() => {
 const initMockupImages = async () => {
     try {
         isProcessing.value = true;
-        processedFront = await processMockupImage(tshirtFrontImg);
-        processedBack = await processMockupImage(tshirtBackImg);
+        const images = shirtImages[store.currentShirtType];
+        processedFront = await processMockupImage(images.front);
+        processedBack = await processMockupImage(images.back);
         updateMockupColor();
     } catch (error) {
         console.error("Gagal memproses gambar mockup:", error);
@@ -559,6 +579,14 @@ watch(
         nextTick(() => {
             updateTooltipPosition();
         });
+    },
+);
+
+watch(
+    () => store.currentShirtType,
+    async () => {
+        await initMockupImages();
+        store.saveToLocalStorage();
     },
 );
 

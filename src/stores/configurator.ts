@@ -3,10 +3,12 @@ import { ref } from 'vue'
 
 export type ViewType = 'front' | 'back' | 'both'
 export type CanvasViewType = 'front' | 'back'
+export type ShirtType = 'tshirt' | 'longTshirt' | 'polo'
 
 export const useConfiguratorStore = defineStore('configurator', () => {
   const currentView = ref<ViewType>('front')
   const shirtColor = ref<string>('#ffffff') // default white
+  const currentShirtType = ref<ShirtType>('tshirt')
   
   // Menyimpan state JSON Fabric.js untuk masing-masing view (depan & belakang)
   const canvasStates = ref<Record<CanvasViewType, any>>({
@@ -73,6 +75,7 @@ export const useConfiguratorStore = defineStore('configurator', () => {
   const saveToLocalStorage = () => {
     const dataToSave = {
       shirtColor: shirtColor.value,
+      currentShirtType: currentShirtType.value,
       backdropType: backdropType.value,
       backdropColor: backdropColor.value,
       customBackdropUrl: customBackdropUrl.value,
@@ -88,6 +91,7 @@ export const useConfiguratorStore = defineStore('configurator', () => {
       try {
         const data = JSON.parse(saved)
         if (data.shirtColor) shirtColor.value = data.shirtColor
+        if (data.currentShirtType) currentShirtType.value = data.currentShirtType
         if (data.backdropType) backdropType.value = data.backdropType
         if (data.backdropColor) backdropColor.value = data.backdropColor
         if (data.customBackdropUrl) customBackdropUrl.value = data.customBackdropUrl
@@ -107,6 +111,7 @@ export const useConfiguratorStore = defineStore('configurator', () => {
   const resetStore = () => {
     currentView.value = 'front'
     shirtColor.value = '#ffffff'
+    currentShirtType.value = 'tshirt'
     backdropType.value = 'solid'
     backdropColor.value = '#ffffff'
     customBackdropUrl.value = null
@@ -126,6 +131,7 @@ export const useConfiguratorStore = defineStore('configurator', () => {
   return {
     currentView,
     shirtColor,
+    currentShirtType,
     canvasStates,
     frontDesignUrl,
     backDesignUrl,

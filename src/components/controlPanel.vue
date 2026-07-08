@@ -505,6 +505,60 @@ const onDrop = (e: DragEvent) => {
                 <span>Konfigurasi Kaos</span>
             </h3>
 
+            <!-- Pilihan Model Kaos -->
+            <div>
+                <label
+                    class="block text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 mb-2 tracking-wide"
+                    >Pilih Model Kaos:</label
+                >
+                <div
+                    class="grid grid-cols-3 gap-1 bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-sky-100 dark:border-slate-800"
+                >
+                    <button
+                        @click="
+                            store.currentShirtType = 'tshirt';
+                            store.saveToLocalStorage();
+                        "
+                        :class="[
+                            'py-2 px-1 text-[11px] font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer',
+                            store.currentShirtType === 'tshirt'
+                                ? 'bg-sky-600 text-white shadow-md shadow-sky-500/20 dark:shadow-slate-950/45 border border-sky-500/10'
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/50',
+                        ]"
+                    >
+                        T-Shirt
+                    </button>
+                    <button
+                        @click="
+                            store.currentShirtType = 'longTshirt';
+                            store.saveToLocalStorage();
+                        "
+                        :class="[
+                            'py-2 px-1 text-[11px] font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer',
+                            store.currentShirtType === 'longTshirt'
+                                ? 'bg-sky-600 text-white shadow-md shadow-sky-500/20 dark:shadow-slate-950/45 border border-sky-500/10'
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/50',
+                        ]"
+                    >
+                        Lengan Panjang
+                    </button>
+                    <button
+                        @click="
+                            store.currentShirtType = 'polo';
+                            store.saveToLocalStorage();
+                        "
+                        :class="[
+                            'py-2 px-1 text-[11px] font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer',
+                            store.currentShirtType === 'polo'
+                                ? 'bg-sky-600 text-white shadow-md shadow-sky-500/20 dark:shadow-slate-950/45 border border-sky-500/10'
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/50',
+                        ]"
+                    >
+                        Polo
+                    </button>
+                </div>
+            </div>
+
             <!-- Sisi Kaos Toggle -->
             <div>
                 <label
