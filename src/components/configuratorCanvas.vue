@@ -120,17 +120,17 @@ const transformOriginStyle = computed(() => {
         if (isMouseOverContainer.value) {
             return `${containerMouseX.value.toFixed(2)}% ${containerMouseY.value.toFixed(2)}%`;
         } else {
-            return '50% 50%'; // Kembali ke tengah jika kursor berada di luar area
+            return "50% 50%"; // Kembali ke tengah jika kursor berada di luar area
         }
     }
 
     // Dimensi container visual workspace saat ini
     const canvasWidth = 550;
     const canvasHeight = 550;
-    
+
     // Konfigurasi area cetak aktif
     const config = currentCanvasConfig.value;
-    
+
     if (fabricCanvas) {
         const activeObj = fabricCanvas.getActiveObject();
         if (activeObj) {
@@ -139,19 +139,21 @@ const transformOriginStyle = computed(() => {
             const printAreaY = (config.top / 500) * canvasHeight;
             const printAreaW = (config.width / 500) * canvasWidth;
             const printAreaH = (config.height / 500) * canvasHeight;
-            
+
             const objCenter = activeObj.getCenterPoint();
-            const objXInCanvas = printAreaX + (objCenter.x / fabricCanvas.width) * printAreaW;
-            const objYInCanvas = printAreaY + (objCenter.y / fabricCanvas.height) * printAreaH;
-            
+            const objXInCanvas =
+                printAreaX + (objCenter.x / fabricCanvas.width) * printAreaW;
+            const objYInCanvas =
+                printAreaY + (objCenter.y / fabricCanvas.height) * printAreaH;
+
             // Ubah koordinat absolut menjadi persentase transform-origin
             const pctX = (objXInCanvas / canvasWidth) * 100;
             const pctY = (objYInCanvas / canvasHeight) * 100;
-            
+
             return `${pctX.toFixed(2)}% ${pctY.toFixed(2)}%`;
         }
     }
-    
+
     // Default: Pusat area cetak sablon (dada kaos)
     const centerX = ((config.left + config.width / 2) / 500) * 100;
     const centerY = ((config.top + config.height / 2) / 500) * 100;
@@ -292,9 +294,9 @@ const handleKeyDown = (e: KeyboardEvent) => {
     }
 };
 
-// Menyimpan referensi mockup hasil pre-proses
-let processedFront: HTMLCanvasElement | null = null;
-let processedBack: HTMLCanvasElement | null = null;
+// Menyimpan referensi mockup hasil pre-proses secara reaktif
+const processedFront = ref<HTMLCanvasElement | null>(null);
+const processedBack = ref<HTMLCanvasElement | null>(null);
 
 // Konfigurasi letak dan ukuran area sablon (chest area) pada canvas mockup 500x500px
 const canvasConfigs = {
@@ -314,15 +316,24 @@ const canvasConfigs = {
 
 // Menghitung warna mockup secara statis untuk tampak depan dan belakang
 const frontMockupUrl = computed(() => {
-    if (processedFront) {
-        return colorizeMockup(processedFront, store.shirtColor);
+    if (processedFront.value) {
+        let tagBox = undefined;
+        if (store.currentShirtType === "tshirt") {
+            tagBox = { left: 0.6645, top: 0.88, width: 0.0255, height: 0.0255 };
+        } else if (
+            store.currentShirtType === "longTshirt" ||
+            store.currentShirtType === "polo"
+        ) {
+            tagBox = { left: 0.696, top: 0.907, width: 0.0255, height: 0.025 };
+        }
+        return colorizeMockup(processedFront.value, store.shirtColor, tagBox);
     }
     return shirtImages[store.currentShirtType].front;
 });
 
 const backMockupUrl = computed(() => {
-    if (processedBack) {
-        return colorizeMockup(processedBack, store.shirtColor);
+    if (processedBack.value) {
+        return colorizeMockup(processedBack.value, store.shirtColor);
     }
     return shirtImages[store.currentShirtType].back;
 });
@@ -362,8 +373,8 @@ const initMockupImages = async () => {
     try {
         isProcessing.value = true;
         const images = shirtImages[store.currentShirtType];
-        processedFront = await processMockupImage(images.front);
-        processedBack = await processMockupImage(images.back);
+        processedFront.value = await processMockupImage(images.front);
+        processedBack.value = await processMockupImage(images.back);
         updateMockupColor();
     } catch (error) {
         console.error("Gagal memproses gambar mockup:", error);
@@ -374,14 +385,24 @@ const initMockupImages = async () => {
 
 // Memperbarui warna kaos secara dinamis berdasarkan state store
 const updateMockupColor = () => {
-    if (displayedView.value === "front" && processedFront) {
+    if (displayedView.value === "front" && processedFront.value) {
+        let tagBox = undefined;
+        if (store.currentShirtType === "tshirt") {
+            tagBox = { left: 0.6645, top: 0.88, width: 0.0255, height: 0.0255 };
+        } else if (
+            store.currentShirtType === "longTshirt" ||
+            store.currentShirtType === "polo"
+        ) {
+            tagBox = { left: 0.696, top: 0.907, width: 0.0255, height: 0.025 };
+        }
         currentMockupUrl.value = colorizeMockup(
-            processedFront,
+            processedFront.value,
             store.shirtColor,
+            tagBox,
         );
-    } else if (displayedView.value === "back" && processedBack) {
+    } else if (displayedView.value === "back" && processedBack.value) {
         currentMockupUrl.value = colorizeMockup(
-            processedBack,
+            processedBack.value,
             store.shirtColor,
         );
     }
@@ -1065,10 +1086,12 @@ defineExpose({
                 <!-- Pembungkus Skala Ukuran Kaos (S, M, L, XL, XXL, XXXL) + Zoom Detail -->
                 <div
                     class="absolute inset-0 w-full h-full flex items-center justify-center transform-style-3d pointer-events-none transition-all duration-300 ease-out"
-                    :style="{ 
+                    :style="{
                         transform: `scale(${shirtScale * zoomScale})`,
                         transformOrigin: transformOriginStyle,
-                        transition: isDetailZoomActive ? 'transform 0.3s ease-out, transform-origin 0.15s ease-out' : ''
+                        transition: isDetailZoomActive
+                            ? 'transform 0.3s ease-out, transform-origin 0.15s ease-out'
+                            : '',
                     }"
                 >
                     <!-- Lapisan Kaos Mockup (Dengan filter drop-shadow agar kaos terlihat timbul 3D) -->
@@ -1174,50 +1197,63 @@ defineExpose({
                     >Hapus Elemen</span
                 >
             </button>
+        </div>
 
-            <!-- Kontrol Zoom Melayang (Glassmorphism Premium di Pojok Kiri Bawah) -->
-            <div
-                v-if="store.currentView !== 'both'"
-                class="absolute bottom-4 left-4 z-35 bg-white/90 dark:bg-slate-900/90 border border-sky-100 dark:border-slate-800 p-1.5 rounded-xl shadow-md flex items-center gap-1 backdrop-blur-md pointer-events-auto"
-            >
+        <!-- Kontrol Zoom & Fokus Detail di Luar Kanvas (Di bawah agar tidak menghalangi gambar kaos) -->
+        <div
+            v-if="store.currentView !== 'both'"
+            class="mt-4 flex items-center gap-3 bg-white/95 dark:bg-slate-900/95 border border-sky-100 dark:border-slate-800 p-2 rounded-2xl shadow-lg backdrop-blur-md pointer-events-auto"
+        >
+            <div class="flex items-center gap-1">
                 <button
                     @click="zoomOut"
-                    class="w-7 h-7 rounded-lg hover:bg-sky-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-350 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer"
+                    class="w-8 h-8 rounded-xl hover:bg-sky-50 dark:hover:bg-slate-850 text-slate-650 dark:text-slate-350 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer border border-transparent hover:border-sky-100 dark:hover:border-slate-800"
                     title="Zoom Out"
                 >
-                    <PhMinus :size="12" weight="bold" />
+                    <PhMinus :size="14" weight="bold" />
                 </button>
                 <span
-                    class="text-[9px] font-black font-mono text-slate-700 dark:text-slate-200 min-w-[36px] text-center"
+                    class="text-[10px] font-black font-mono text-slate-700 dark:text-slate-200 min-w-[40px] text-center"
                 >
                     {{ Math.round(zoomScale * 100) }}%
                 </span>
                 <button
                     @click="zoomIn"
-                    class="w-7 h-7 rounded-lg hover:bg-sky-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-350 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer"
+                    class="w-8 h-8 rounded-xl hover:bg-sky-50 dark:hover:bg-slate-850 text-slate-650 dark:text-slate-350 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer border border-transparent hover:border-sky-100 dark:hover:border-slate-800"
                     title="Zoom In"
                 >
-                    <PhPlus :size="12" weight="bold" />
+                    <PhPlus :size="14" weight="bold" />
                 </button>
-                <div class="w-[1px] h-4 bg-slate-200 dark:bg-slate-800 mx-0.5"></div>
-                <button
-                    @click="toggleDetailFocus"
-                    class="px-2 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer"
-                    :class="isDetailZoomActive ? 'bg-sky-100 dark:bg-slate-800 text-sky-600 dark:text-sky-400 font-semibold' : 'hover:bg-sky-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-350 hover:text-sky-600 dark:hover:text-sky-400'"
-                    :title="isDetailZoomActive ? 'Reset Tampilan' : 'Fokus Detail Ke Objek'"
-                >
-                    <PhMagnifyingGlass :size="12" weight="bold" />
-                    <span class="text-[8px] font-black uppercase tracking-wider">Detail</span>
-                </button>
-                <div class="w-[1px] h-4 bg-slate-200 dark:bg-slate-800 mx-0.5"></div>
+                <div
+                    class="w-[1px] h-4 bg-slate-200 dark:bg-slate-800 mx-1.5"
+                ></div>
                 <button
                     @click="resetZoom"
-                    class="w-7 h-7 rounded-lg hover:bg-sky-50 dark:hover:bg-slate-800 text-slate-500 hover:text-sky-655 flex items-center justify-center transition-all cursor-pointer"
+                    class="w-8 h-8 rounded-xl hover:bg-sky-50 dark:hover:bg-slate-850 text-slate-500 hover:text-sky-600 flex items-center justify-center transition-all cursor-pointer border border-transparent hover:border-sky-100 dark:hover:border-slate-800"
                     title="Reset Zoom"
                 >
-                    <PhArrowCounterClockwise :size="12" weight="bold" />
+                    <PhArrowCounterClockwise :size="14" weight="bold" />
                 </button>
             </div>
+            
+            <div class="w-[1px] h-5 bg-slate-200 dark:bg-slate-800"></div>
+
+            <button
+                @click="toggleDetailFocus"
+                class="w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer border border-transparent"
+                :class="
+                    isDetailZoomActive
+                        ? 'bg-sky-100 dark:bg-slate-800 text-sky-600 dark:text-sky-400 border-sky-200 dark:border-slate-750'
+                        : 'hover:bg-sky-50 dark:hover:bg-slate-850 text-slate-650 dark:text-slate-350 hover:text-sky-600 dark:hover:text-sky-400 hover:border-sky-100 dark:hover:border-slate-800'
+                "
+                :title="
+                    isDetailZoomActive
+                        ? 'Reset Tampilan'
+                        : 'Fokus Detail Ke Objek'
+                "
+            >
+                <PhMagnifyingGlass :size="14" weight="bold" />
+            </button>
         </div>
 
         <!-- Mode Preview Berdampingan (Kedua Sisi) (Hanya tampil jika mode 'both') -->
@@ -1401,128 +1437,7 @@ defineExpose({
             </span>
         </div>
 
-        <!-- Tabel Panduan Ukuran Kaos Interaktif (Selalu Tampil untuk Ditonton/Dilihat) -->
-        <div
-            class="mt-5 w-[550px] bg-white/70 dark:bg-slate-900/60 border border-sky-100/50 dark:border-slate-800/80 backdrop-blur-md rounded-2xl p-4.5 shadow-sm space-y-3 text-slate-850 dark:text-slate-200"
-        >
-            <div class="flex items-center justify-between">
-                <h4
-                    class="text-[10px] font-black uppercase tracking-wider text-sky-850 dark:text-sky-300 flex items-center gap-1.5"
-                >
-                    <span
-                        class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"
-                    ></span>
-                    Tabel Panduan Ukuran Kaos (cm)
-                </h4>
-                <span
-                    class="text-[9px] text-slate-500 dark:text-slate-400 font-bold bg-sky-50 dark:bg-slate-850 border border-sky-100 dark:border-slate-750 px-2.5 py-0.5 rounded-lg"
-                >
-                    Ukuran Aktif:
-                    <strong class="text-sky-600 dark:text-sky-400 font-black">{{
-                        store.currentSize
-                    }}</strong>
-                </span>
-            </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-center text-[10px] border-collapse">
-                    <thead>
-                        <tr
-                            class="border-b border-sky-100/30 dark:border-slate-800 text-slate-400 dark:text-slate-500"
-                        >
-                            <th
-                                class="py-2 px-1 text-left font-bold uppercase tracking-wider"
-                            >
-                                Ukuran
-                            </th>
-                            <th
-                                v-for="size in [
-                                    'S',
-                                    'M',
-                                    'L',
-                                    'XL',
-                                    'XXL',
-                                    'XXXL',
-                                ]"
-                                :key="size"
-                                :class="[
-                                    'py-2 px-1 font-black transition-all duration-300',
-                                    store.currentSize === size
-                                        ? 'text-sky-600 dark:text-sky-400 text-xs scale-110'
-                                        : '',
-                                ]"
-                            >
-                                {{ size }}
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr
-                            class="border-b border-sky-100/10 dark:border-slate-850/40 text-slate-700 dark:text-slate-350"
-                        >
-                            <td
-                                class="py-2.5 px-1 text-left font-bold text-slate-500 dark:text-slate-400"
-                            >
-                                Panjang
-                            </td>
-                            <td
-                                v-for="size in [
-                                    'S',
-                                    'M',
-                                    'L',
-                                    'XL',
-                                    'XXL',
-                                    'XXXL',
-                                ]"
-                                :key="size"
-                                :class="[
-                                    'py-2.5 px-1 transition-all duration-300',
-                                    store.currentSize === size
-                                        ? 'bg-sky-500/10 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 font-extrabold rounded-lg'
-                                        : '',
-                                ]"
-                            >
-                                {{
-                                    store.shirtSizes[
-                                        size as keyof typeof store.shirtSizes
-                                    ].length
-                                }}
-                            </td>
-                        </tr>
-                        <tr class="text-slate-700 dark:text-slate-350">
-                            <td
-                                class="py-2.5 px-1 text-left font-bold text-slate-500 dark:text-slate-400"
-                            >
-                                Lebar
-                            </td>
-                            <td
-                                v-for="size in [
-                                    'S',
-                                    'M',
-                                    'L',
-                                    'XL',
-                                    'XXL',
-                                    'XXXL',
-                                ]"
-                                :key="size"
-                                :class="[
-                                    'py-2.5 px-1 transition-all duration-300',
-                                    store.currentSize === size
-                                        ? 'bg-sky-500/10 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 font-extrabold rounded-lg'
-                                        : '',
-                                ]"
-                            >
-                                {{
-                                    store.shirtSizes[
-                                        size as keyof typeof store.shirtSizes
-                                    ].width
-                                }}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
     </div>
 </template>
 

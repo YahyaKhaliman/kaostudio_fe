@@ -18,9 +18,12 @@ import {
     PhPlus,
     PhEye,
     PhCaretDown,
+    PhRuler,
+    PhX,
 } from "@phosphor-icons/vue";
 
 import { compressImage, formatBytes } from "../utils/imageCompressor";
+import sizeChartImg from "../assets/images/size chart.png";
 
 const props = defineProps<{
     selectedObject: any;
@@ -42,6 +45,7 @@ const emit = defineEmits<{
 }>();
 
 const store = useConfiguratorStore();
+const showSizeGuide = ref(false);
 
 // State Dropdown Ekspor
 const activeDropdown = ref<"print" | "mockup" | null>(null);
@@ -506,7 +510,7 @@ const onDrop = (e: DragEvent) => {
             </h3>
 
             <!-- Pilihan Model Kaos -->
-            <div>
+            <div v-if="store.currentView !== 'both'">
                 <label
                     class="block text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 mb-2 tracking-wide"
                     >Pilih Model Kaos:</label
@@ -607,11 +611,22 @@ const onDrop = (e: DragEvent) => {
             </div>
 
             <!-- Pilihan Ukuran Kaos (Sesuai Standar Perusahaan) -->
-            <div>
-                <label
-                    class="block text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 mb-2 tracking-wide"
-                    >Pilih Ukuran Kaos:</label
-                >
+            <!-- Pilihan Ukuran Kaos (Sesuai Standar Perusahaan) -->
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <label
+                        class="block text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wide"
+                        >Pilih Ukuran Kaos:</label
+                    >
+                    <button
+                        @click="showSizeGuide = true"
+                        class="text-[9px] font-bold text-sky-600 dark:text-sky-400 hover:text-sky-850 dark:hover:text-sky-300 transition-all flex items-center gap-1 cursor-pointer bg-transparent border-0 outline-none"
+                        type="button"
+                    >
+                        <PhRuler :size="10" weight="bold" />
+                        <span>Panduan Ukuran</span>
+                    </button>
+                </div>
                 <div
                     class="grid grid-cols-6 gap-1 bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-sky-100 dark:border-slate-800"
                 >
@@ -628,10 +643,28 @@ const onDrop = (e: DragEvent) => {
                                 ? 'bg-sky-600 text-white shadow-sm border border-sky-500/10'
                                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/50',
                         ]"
-                        :title="`Ukuran ${size}: Lebar ${store.shirtSizes[size as keyof typeof store.shirtSizes].width} cm, Panjang ${store.shirtSizes[size as keyof typeof store.shirtSizes].length} cm`"
                     >
                         {{ size }}
                     </button>
+                </div>
+                <!-- Info Dimensi Ukuran Aktif (Informatif & Cantik) -->
+                <div
+                    class="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-sky-50/30 dark:bg-slate-950/20 border border-sky-100/40 dark:border-slate-805/60 rounded-xl text-[9px] text-slate-500 dark:text-slate-400"
+                >
+                    <span
+                        class="font-extrabold text-sky-600 dark:text-sky-400 uppercase"
+                        >Ukuran {{ store.currentSize }}:</span
+                    >
+                    <span
+                        >Lebar
+                        {{ store.shirtSizes[store.currentSize].width }} cm</span
+                    >
+                    <span class="text-slate-350 dark:text-slate-800">|</span>
+                    <span
+                        >Panjang
+                        {{ store.shirtSizes[store.currentSize].length }}
+                        cm</span
+                    >
                 </div>
             </div>
 
@@ -1354,6 +1387,158 @@ const onDrop = (e: DragEvent) => {
                 </div>
             </div>
         </div>
+
+        <!-- Modal Panduan Ukuran Kaos (Premium Pop-Up) -->
+        <Transition
+            enter-active-class="transition duration-300 ease-out"
+            enter-from-class="opacity-0 scale-95"
+            enter-to-class="opacity-100 scale-100"
+            leave-active-class="transition duration-200 ease-in"
+            leave-from-class="opacity-100 scale-100"
+            leave-to-class="opacity-0 scale-95"
+        >
+            <div
+                v-if="showSizeGuide"
+                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm"
+                @click.self="showSizeGuide = false"
+            >
+                <div
+                    class="bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-modal-pop text-slate-850 dark:text-slate-100"
+                >
+                    <!-- Modal Header -->
+                    <div
+                        class="px-5 py-4 border-b border-sky-50 dark:border-slate-800 flex justify-between items-center bg-sky-50/50 dark:bg-slate-950/20"
+                    >
+                        <div class="flex items-center gap-2">
+                            <PhRuler
+                                :size="16"
+                                class="text-sky-600 dark:text-sky-400"
+                                weight="bold"
+                            />
+                            <h3
+                                class="font-extrabold text-[12px] tracking-tight text-slate-900 dark:text-white uppercase"
+                            >
+                                Panduan Ukuran
+                            </h3>
+                        </div>
+                        <button
+                            @click="showSizeGuide = false"
+                            class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-all cursor-pointer bg-transparent border-0 outline-none"
+                        >
+                            <PhX :size="14" weight="bold" />
+                        </button>
+                    </div>
+
+                    <!-- Modal Body -->
+                    <div class="p-5 space-y-5">
+                        <!-- Tabel Ukuran -->
+                        <div
+                            class="overflow-hidden border border-sky-100 dark:border-slate-800 rounded-xl"
+                        >
+                            <table
+                                class="w-full text-[10px] text-left border-collapse"
+                            >
+                                <thead>
+                                    <tr
+                                        class="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-extrabold uppercase border-b border-sky-100 dark:border-slate-800"
+                                    >
+                                        <th class="px-3 py-2.5 text-center">
+                                            Ukuran
+                                        </th>
+                                        <th class="px-3 py-2.5 text-center">
+                                            Lebar (cm)
+                                        </th>
+                                        <th class="px-3 py-2.5 text-center">
+                                            Panjang (cm)
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr
+                                        v-for="(dims, size) in store.shirtSizes"
+                                        :key="size"
+                                        class="border-b border-sky-50/50 dark:border-slate-800 last:border-0 hover:bg-sky-50/20 dark:hover:bg-slate-850/30 transition-all"
+                                        :class="{
+                                            'bg-sky-50/40 dark:bg-sky-950/20 font-bold text-sky-600 dark:text-sky-400':
+                                                store.currentSize === size,
+                                        }"
+                                    >
+                                        <td
+                                            class="px-3 py-2 text-center font-black text-center"
+                                        >
+                                            {{ size }}
+                                        </td>
+                                        <td class="px-3 py-2 text-center">
+                                            {{ dims.width }} cm
+                                        </td>
+                                        <td class="px-3 py-2 text-center">
+                                            {{ dims.length }} cm
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Infografis Size Chart -->
+                        <div
+                            class="flex items-center justify-center p-2.5 bg-slate-50 dark:bg-slate-950/45 rounded-xl border border-sky-100/50 dark:border-slate-800/85"
+                        >
+                            <img
+                                :src="sizeChartImg"
+                                alt="Ilustrasi Panduan Ukuran"
+                                class="max-w-full max-h-[200px] object-contain rounded-lg filter dark:brightness-95"
+                            />
+                        </div>
+
+                        <!-- Ilustrasi Cara Mengukur -->
+                        <div
+                            class="bg-sky-50/50 dark:bg-slate-950/30 border border-sky-100/50 dark:border-slate-800 p-3.5 rounded-xl flex gap-2.5"
+                        >
+                            <div
+                                class="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-lg bg-sky-600/10 text-sky-600 dark:text-sky-400"
+                            >
+                                <PhTShirt :size="14" weight="bold" />
+                            </div>
+                            <div class="space-y-1">
+                                <h4
+                                    class="text-[10px] font-extrabold text-slate-850 dark:text-white uppercase tracking-wider"
+                                >
+                                    Cara Mengukur Kaos
+                                </h4>
+                                <p
+                                    class="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed"
+                                >
+                                    * <strong>Lebar:</strong> Ukur secara
+                                    mendatar dari jahitan ketiak kiri ke ketiak
+                                    kanan.<br />
+                                    * <strong>Panjang:</strong> Ukur secara
+                                    tegak lurus dari titik bahu tertinggi hingga
+                                    ujung bawah kaos.<br />
+                                    *
+                                    <span
+                                        class="text-amber-600 dark:text-amber-400 font-bold"
+                                        >Toleransi Ukuran:</span
+                                    >
+                                    Terdapat batas toleransi ±1 s/d 2 cm.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <div
+                        class="px-5 py-3 border-t border-sky-50 dark:border-slate-800 flex justify-end bg-slate-50/50 dark:bg-slate-950/10"
+                    >
+                        <button
+                            @click="showSizeGuide = false"
+                            class="px-4 py-2 text-[10px] font-extrabold bg-sky-600 hover:bg-sky-500 text-white rounded-xl shadow-md transition-all duration-300 hover:scale-103 cursor-pointer border-0 outline-none"
+                        >
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Transition>
     </div>
 </template>
 
