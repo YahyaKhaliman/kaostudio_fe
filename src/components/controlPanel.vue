@@ -680,7 +680,7 @@ const onDrop = (e: DragEvent) => {
 
                                     <!-- Dropdown Menu -->
                                     <Transition name="fade">
-                                        <div v-if="isModelDropdownOpen" class="absolute top-full mt-1.5 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-sky-100 dark:border-slate-800 rounded-2xl shadow-xl z-30 p-1.5 space-y-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                                        <div v-if="isModelDropdownOpen" class="absolute top-full mt-1.5 left-0 right-0 bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 rounded-2xl shadow-xl z-30 p-1.5 space-y-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
                                             <button
                                                 @click="store.currentShirtType = 'tshirt'; store.saveToLocalStorage(); isModelDropdownOpen = false"
                                                 class="w-full py-1.5 px-2.5 rounded-xl text-left text-[10px] font-bold text-slate-700 dark:text-slate-350 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-between cursor-pointer border-0 outline-none bg-transparent"
@@ -770,7 +770,7 @@ const onDrop = (e: DragEvent) => {
 
                                     <!-- Dropdown Menu -->
                                     <Transition name="fade">
-                                        <div v-if="isViewDropdownOpen" class="absolute top-full mt-1.5 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-sky-100 dark:border-slate-800 rounded-2xl shadow-xl z-30 p-1.5 space-y-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                                        <div v-if="isViewDropdownOpen" class="absolute top-full mt-1.5 left-0 right-0 bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 rounded-2xl shadow-xl z-30 p-1.5 space-y-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
                                             <button
                                                 @click="store.currentView = 'front'; isViewDropdownOpen = false"
                                                 class="w-full py-1.5 px-2.5 rounded-xl text-left text-[10px] font-bold text-slate-700 dark:text-slate-305 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-between cursor-pointer border-0 outline-none bg-transparent"
@@ -974,7 +974,7 @@ const onDrop = (e: DragEvent) => {
                                 <Transition name="fade">
                                     <div
                                         v-if="isColorDropdownOpen"
-                                        class="absolute top-full mt-1.5 left-0 right-0 max-h-56 overflow-y-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-sky-100 dark:border-slate-800 rounded-xl shadow-xl z-20 p-2 space-y-2 animate-in fade-in slide-in-from-top-2 duration-150"
+                                        class="absolute top-full mt-1.5 left-0 right-0 max-h-56 overflow-y-auto bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 rounded-xl shadow-xl z-20 p-2 space-y-2 animate-in fade-in slide-in-from-top-2 duration-150"
                                     >
                                         <input
                                             v-model="searchQuery"
@@ -1731,7 +1731,7 @@ const onDrop = (e: DragEvent) => {
                                 <Transition name="fade">
                                     <div
                                         v-if="isPrintDropdownOpen"
-                                        class="absolute bottom-full mb-2 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-sky-100 dark:border-slate-800 rounded-2xl shadow-xl z-20 py-1.5 overflow-hidden flex flex-col text-left animate-in fade-in slide-in-from-bottom-2 duration-150"
+                                        class="absolute bottom-full mb-2 left-0 right-0 bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 rounded-2xl shadow-xl z-20 py-1.5 overflow-hidden flex flex-col text-left animate-in fade-in slide-in-from-bottom-2 duration-150"
                                     >
                                         <button
                                             @click="handlePrintExport('front')"
@@ -1802,7 +1802,7 @@ const onDrop = (e: DragEvent) => {
                                 <Transition name="fade">
                                     <div
                                         v-if="isMockupDropdownOpen"
-                                        class="absolute bottom-full mb-2 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-sky-100 dark:border-slate-800 rounded-2xl shadow-xl z-20 py-1.5 overflow-hidden flex flex-col text-left animate-in fade-in slide-in-from-bottom-2 duration-150"
+                                        class="absolute bottom-full mb-2 left-0 right-0 bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 rounded-2xl shadow-xl z-20 py-1.5 overflow-hidden flex flex-col text-left animate-in fade-in slide-in-from-bottom-2 duration-150"
                                     >
                                         <button
                                             @click="handleMockupExport('front')"
