@@ -124,40 +124,30 @@ const transformOriginStyle = computed(() => {
         }
     }
 
-    // Dimensi container visual workspace saat ini
-    const canvasWidth = 550;
-    const canvasHeight = 550;
-
-    // Konfigurasi area cetak aktif
-    const config = currentCanvasConfig.value;
+    const containerSize = 550;
 
     if (fabricCanvas) {
         const activeObj = fabricCanvas.getActiveObject();
         if (activeObj) {
-            // Dapatkan pusat absolut objek relatif terhadap canvas pembungkus 550x550px
-            const printAreaX = (config.left / 500) * canvasWidth;
-            const printAreaY = (config.top / 500) * canvasHeight;
-            const printAreaW = (config.width / 500) * canvasWidth;
-            const printAreaH = (config.height / 500) * canvasHeight;
-
             const objCenter = activeObj.getCenterPoint();
-            const objXInCanvas =
-                printAreaX + (objCenter.x / fabricCanvas.width) * printAreaW;
-            const objYInCanvas =
-                printAreaY + (objCenter.y / fabricCanvas.height) * printAreaH;
+            const cTop = canvasTop.value;
+
+            // Posisi X absolut: canvas dipusatkan secara horizontal
+            const objX = 275 + (objCenter.x - fabricCanvas.width / 2);
+            const objY = cTop + objCenter.y;
 
             // Ubah koordinat absolut menjadi persentase transform-origin
-            const pctX = (objXInCanvas / canvasWidth) * 100;
-            const pctY = (objYInCanvas / canvasHeight) * 100;
+            const pctX = (objX / containerSize) * 100;
+            const pctY = (objY / containerSize) * 100;
 
             return `${pctX.toFixed(2)}% ${pctY.toFixed(2)}%`;
         }
     }
 
-    // Default: Pusat area cetak sablon (dada kaos)
-    const centerX = ((config.left + config.width / 2) / 500) * 100;
-    const centerY = ((config.top + config.height / 2) / 500) * 100;
-    return `${centerX.toFixed(2)}% ${centerY.toFixed(2)}%`;
+    // Default: Pusat canvas
+    const cTop = canvasTop.value;
+    const centerY = ((cTop + canvasHeight.value / 2) / containerSize) * 100;
+    return `50% ${centerY.toFixed(2)}%`;
 });
 
 // Toggle Zoom Detail Cepat (Langsung 145% zoom ke koordinat mouse yang diarahkan)
@@ -180,17 +170,6 @@ const shirtScale = computed(() => {
     const refWidth = 51;
     const sizeData = store.shirtSizes[store.currentSize];
     return sizeData.width / refWidth;
-});
-
-// Hitung dimensi riil area sablon depan/belakang saat ini berdasarkan ukuran kaos aktif
-const printableAreaDimensions = computed(() => {
-    const sizeData = store.shirtSizes[store.currentSize];
-    const maxPrintW = sizeData.width * 0.52; // 52% lebar dada kaos
-    const maxPrintH = sizeData.length * 0.5; // 50% panjang kaos
-    return {
-        width: parseFloat(maxPrintW.toFixed(1)),
-        height: parseFloat(maxPrintH.toFixed(1)),
-    };
 });
 
 // State untuk tooltip dimensi melayang (koordinat absolut di atas objek terpilih)
@@ -239,26 +218,9 @@ const updateSelectedObjectDimensions = () => {
     const objW = obj.width * obj.scaleX;
     const objH = obj.height * obj.scaleY;
 
-    // Tentukan viewKey aktif saat ini
-    const viewKey = (
-        displayedView.value === "both" ? "front" : displayedView.value
-    ) as CanvasViewType;
-    const canvasConfig = canvasConfigs[viewKey];
-
-    // Ambil data centimeter dada kaos aktif
-    const sizeData = store.shirtSizes[store.currentSize];
-
-    // Model matematika: batas sablon fisik proporsional terhadap ukuran kaos
-    const maxPrintW = sizeData.width * 0.52; // area cetak mengambil 52% lebar dada kaos
-    const maxPrintH = sizeData.length * 0.5; // area cetak mengambil 50% panjang kaos
-
-    // Hitung proporsi objek terhadap area cetak di kanvas Fabric
-    const propW = objW / canvasConfig.width;
-    const propH = objH / canvasConfig.height;
-
-    // Hitung ukuran fisik riil dalam cm
-    const realW = propW * maxPrintW;
-    const realH = propH * maxPrintH;
+    // Hitung ukuran fisik riil dalam cm berdasarkan pxPerCm dinamis
+    const realW = objW / pxPerCm.value;
+    const realH = objH / pxPerCm.value;
 
     selectedObjectDimensions.value = {
         width: parseFloat(realW.toFixed(1)),
@@ -298,20 +260,76 @@ const handleKeyDown = (e: KeyboardEvent) => {
 const processedFront = ref<HTMLCanvasElement | null>(null);
 const processedBack = ref<HTMLCanvasElement | null>(null);
 
-// Konfigurasi letak dan ukuran area sablon (chest area) pada canvas mockup 500x500px
-const canvasConfigs = {
-    front: {
-        width: 200,
-        height: 270,
-        top: 110,
-        left: 150,
+// Konfigurasi letak dan ukuran area sablon (torso area) pada canvas mockup 500x500px untuk setiap jenis kaos
+const shirtTypeConfigs = {
+    tshirt: {
+        front: { baseTop: 95, pxPerCm: 5.5, sideMargin: 4.0 }, // margin samping 4cm
+        back: { baseTop: 85, pxPerCm: 5.5, sideMargin: 4.0 },
     },
-    back: {
-        width: 210,
-        height: 290,
-        top: 100,
-        left: 145,
+    longTshirt: {
+        front: { baseTop: 100, pxPerCm: 5.4, sideMargin: 4.0 },
+        back: { baseTop: 90, pxPerCm: 5.4, sideMargin: 4.0 },
     },
+    polo: {
+        front: { baseTop: 115, pxPerCm: 5.2, sideMargin: 4.5 }, // polo margin samping 4.5cm
+        back: { baseTop: 100, pxPerCm: 5.2, sideMargin: 4.5 },
+    },
+};
+
+const activeShirtConfig = computed(() => {
+    const viewKey = (
+        displayedView.value === "both" ? "front" : displayedView.value
+    ) as "front" | "back";
+    return shirtTypeConfigs[store.currentShirtType][viewKey];
+});
+
+const pxPerCm = computed(() => activeShirtConfig.value.pxPerCm);
+
+const canvasWidth = computed(() => {
+    const sizeData = store.shirtSizes[store.currentSize];
+    const margin = activeShirtConfig.value.sideMargin;
+    return (sizeData.width - 2 * margin) * pxPerCm.value;
+});
+
+const canvasHeight = computed(() => {
+    const sizeData = store.shirtSizes[store.currentSize];
+    return sizeData.length * pxPerCm.value;
+});
+
+const canvasTop = computed(() => {
+    const refLength = 71; // L size reference length
+    const sizeData = store.shirtSizes[store.currentSize];
+    const diff = (refLength - sizeData.length) * pxPerCm.value;
+    const baseTop = activeShirtConfig.value.baseTop;
+    return baseTop + diff * 0.25;
+});
+
+// Snap Guideline State
+const activeSnapPoint = ref<{ name: string; x: number; y: number } | null>(
+    null,
+);
+let activeSnap: { x: number; y: number; name: string } | null = null;
+
+const getStandardSnapPoints = () => {
+    const w = canvasWidth.value;
+    const h = canvasHeight.value;
+
+    if (displayedView.value === "front") {
+        return [
+            { name: "Tengah Dada", x: w / 2, y: h * 0.35 },
+            { name: "Dada Kiri", x: w * 0.7, y: h * 0.24 },
+            { name: "Dada Kanan", x: w * 0.3, y: h * 0.24 },
+            { name: "Bawah Kiri", x: w * 0.7, y: h * 0.8 },
+            { name: "Bawah Kanan", x: w * 0.3, y: h * 0.8 },
+            { name: "Tengah Kaos", x: w / 2, y: h / 2 },
+        ];
+    } else {
+        return [
+            { name: "Belakang Tengah", x: w / 2, y: h / 2 },
+            { name: "Belakang Tengah Atas", x: w / 2, y: h * 0.2 },
+            { name: "Belakang Tengah Bawah", x: w / 2, y: h * 0.8 },
+        ];
+    }
 };
 
 // Menghitung warna mockup secara statis untuk tampak depan dan belakang
@@ -340,31 +358,40 @@ const backMockupUrl = computed(() => {
 
 // Fungsi helper untuk menghitung area cetak dengan ukuran fleksibel (untuk mode preview 320px)
 const getPrintableAreaStyle = (view: "front" | "back", size: number) => {
-    const config = canvasConfigs[view];
+    const scale = size / 500;
+    const sizeData = store.shirtSizes[store.currentSize];
+    const config = shirtTypeConfigs[store.currentShirtType][view];
+    const pcm = config.pxPerCm;
+
+    const margin = config.sideMargin;
+
+    // Visual width & height berdasarkan skala kaos
+    const cWidth = (sizeData.width - 2 * margin) * pcm * scale;
+    const cHeight = sizeData.length * pcm * scale;
+
+    const refLength = 71;
+    const diff = (refLength - sizeData.length) * pcm;
+    const cTop = (config.baseTop + diff * 0.25) * scale;
+
     return {
-        top: `${(config.top / 500) * size}px`,
-        left: `${(config.left / 500) * size}px`,
-        width: `${(config.width / 500) * size}px`,
-        height: `${(config.height / 500) * size}px`,
+        top: `${cTop}px`,
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: `${cWidth}px`,
+        height: `${cHeight}px`,
+        position: "absolute" as const,
     };
 };
 
-// Computed property untuk konfigurasi kanvas aktif saat ini (aman dari error tipe both)
-const currentCanvasConfig = computed(() => {
-    const viewKey = (
-        displayedView.value === "both" ? "front" : displayedView.value
-    ) as CanvasViewType;
-    return canvasConfigs[viewKey];
-});
-
 // Menghitung gaya letak area sablon di UI secara absolute
 const printableAreaStyle = computed(() => {
-    const config = currentCanvasConfig.value;
     return {
-        top: `${(config.top / 500) * 100}%`,
-        left: `${(config.left / 500) * 100}%`,
-        width: `${(config.width / 500) * 100}%`,
-        height: `${(config.height / 500) * 100}%`,
+        position: "absolute" as const,
+        top: `${canvasTop.value}px`,
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: `${canvasWidth.value}px`,
+        height: `${canvasHeight.value}px`,
     };
 });
 
@@ -412,12 +439,35 @@ const updateMockupColor = () => {
 const initFabricCanvas = () => {
     if (!canvasRef.value) return;
 
-    const config = currentCanvasConfig.value;
     fabricCanvas = new Canvas(canvasRef.value, {
-        width: config.width,
-        height: config.height,
+        width: canvasWidth.value,
+        height: canvasHeight.value,
         preserveObjectStacking: true,
         backgroundColor: "transparent",
+    });
+
+    // Gambar garis bantu snap secara dinamis setelah render canvas
+    fabricCanvas.on("after:render", () => {
+        if (!activeSnap) return;
+        const ctx = fabricCanvas!.getContext();
+        ctx.save();
+        ctx.strokeStyle = "#10b981"; // Emerald-500
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+
+        // Garis horizontal melewati snap point
+        ctx.beginPath();
+        ctx.moveTo(0, activeSnap.y);
+        ctx.lineTo(fabricCanvas!.width, activeSnap.y);
+        ctx.stroke();
+
+        // Garis vertikal melewati snap point
+        ctx.beginPath();
+        ctx.moveTo(activeSnap.x, 0);
+        ctx.lineTo(activeSnap.x, fabricCanvas!.height);
+        ctx.stroke();
+
+        ctx.restore();
     });
 
     // Daftarkan listener event untuk mendeteksi objek yang dipilih
@@ -462,10 +512,57 @@ const initCanvasEvents = () => {
         selectedObject.value = null;
         selectedObjectDimensions.value = null;
         tooltipStyle.value.display = "none";
+        activeSnapPoint.value = null;
+        activeSnap = null;
     });
 
-    // Sinkronisasi posisi tooltip melayang saat objek dimanipulasi secara real-time
-    fabricCanvas.on("object:moving", updateTooltipPosition);
+    // Sinkronisasi posisi tooltip melayang & logika snap magnetis saat objek digeser
+    fabricCanvas.on("object:moving", (e) => {
+        updateTooltipPosition();
+
+        const obj = e.target;
+        if (!obj) return;
+
+        const objCenter = obj.getCenterPoint();
+        const snapPoints = getStandardSnapPoints();
+        const threshold = 12; // snap threshold in px
+
+        let snapped = false;
+
+        for (const point of snapPoints) {
+            const dx = objCenter.x - point.x;
+            const dy = objCenter.y - point.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < threshold) {
+                // Lock ke snap point
+                obj.set({
+                    left: point.x,
+                    top: point.y,
+                    originX: "center",
+                    originY: "center",
+                });
+                obj.setCoords();
+
+                activeSnapPoint.value = {
+                    name: point.name,
+                    x: point.x,
+                    y: point.y,
+                };
+                activeSnap = { x: point.x, y: point.y, name: point.name };
+                snapped = true;
+                break;
+            }
+        }
+
+        if (!snapped) {
+            activeSnapPoint.value = null;
+            activeSnap = null;
+        }
+
+        fabricCanvas!.renderAll();
+    });
+
     fabricCanvas.on("object:scaling", () => {
         updateTooltipPosition();
         updateSelectedObjectDimensions();
@@ -478,6 +575,9 @@ const initCanvasEvents = () => {
         updateDesignPreviews();
         updateSelectedObjectDimensions();
         updateTooltipPosition();
+        activeSnapPoint.value = null;
+        activeSnap = null;
+        fabricCanvas!.renderAll();
     });
     fabricCanvas.on("object:removed", updateDesignPreviews);
 };
@@ -514,11 +614,41 @@ const loadStateForView = async (view: "front" | "back") => {
 // Mengubah ukuran kanvas saat berpindah sisi kaos
 const resizeCanvas = (view: "front" | "back") => {
     if (!fabricCanvas) return;
-    const config = canvasConfigs[view];
+
+    // Hitung dimensi baru berdasarkan view dan size terpilih
+    const sizeData = store.shirtSizes[store.currentSize];
+    const config = shirtTypeConfigs[store.currentShirtType][view];
+    const pcm = config.pxPerCm;
+    const margin = config.sideMargin;
+    const newWidth = (sizeData.width - 2 * margin) * pcm;
+    const newHeight = sizeData.length * pcm;
+
+    const oldWidth = fabricCanvas.width;
+    const oldHeight = fabricCanvas.height;
+
     fabricCanvas.setDimensions({
-        width: config.width,
-        height: config.height,
+        width: newWidth,
+        height: newHeight,
     });
+
+    // Scale object positions proportionally jika ada perubahan ukuran
+    if (
+        oldWidth &&
+        oldHeight &&
+        (oldWidth !== newWidth || oldHeight !== newHeight)
+    ) {
+        const scaleX = newWidth / oldWidth;
+        const scaleY = newHeight / oldHeight;
+
+        fabricCanvas.getObjects().forEach((obj) => {
+            obj.set({
+                left: obj.left * scaleX,
+                top: obj.top * scaleY,
+            });
+            obj.setCoords();
+        });
+    }
+
     fabricCanvas.renderAll();
 };
 
@@ -592,7 +722,7 @@ watch(
     },
 );
 
-// Watcher untuk mendeteksi perubahan ukuran kaos agar mengupdate dimensi fisik sablon
+// Watcher untuk mendeteksi perubahan ukuran kaos agar mengupdate dimensi fisik sablon dan ukuran canvas
 watch(
     () => store.currentSize,
     () => {
@@ -600,6 +730,38 @@ watch(
         nextTick(() => {
             updateTooltipPosition();
         });
+
+        if (fabricCanvas) {
+            const oldWidth = fabricCanvas.width;
+            const oldHeight = fabricCanvas.height;
+            const newWidth = canvasWidth.value;
+            const newHeight = canvasHeight.value;
+
+            fabricCanvas.setDimensions({
+                width: newWidth,
+                height: newHeight,
+            });
+
+            // Scaled objects positions proportionally
+            if (
+                oldWidth &&
+                oldHeight &&
+                (oldWidth !== newWidth || oldHeight !== newHeight)
+            ) {
+                const scaleX = newWidth / oldWidth;
+                const scaleY = newHeight / oldHeight;
+
+                fabricCanvas.getObjects().forEach((obj) => {
+                    obj.set({
+                        left: obj.left * scaleX,
+                        top: obj.top * scaleY,
+                    });
+                    obj.setCoords();
+                });
+            }
+            fabricCanvas.renderAll();
+            updateDesignPreviews();
+        }
     },
 );
 
@@ -635,11 +797,12 @@ onUnmounted(() => {
 
 const addText = (textVal: string, color = "#000000", fontFamily = "Inter") => {
     if (!fabricCanvas) return;
-    const config = currentCanvasConfig.value;
 
     const text = new IText(textVal, {
-        left: config.width / 2 - 50,
-        top: config.height / 2 - 20,
+        left: fabricCanvas.width / 2,
+        top: fabricCanvas.height / 2,
+        originX: "center",
+        originY: "center",
         fontSize: 24,
         fill: color,
         fontFamily: fontFamily,
@@ -653,14 +816,15 @@ const addText = (textVal: string, color = "#000000", fontFamily = "Inter") => {
 
 const addImage = (source: File | string) => {
     if (!fabricCanvas) return;
-    const config = currentCanvasConfig.value;
 
     const loadAndAddToCanvas = (url: string) => {
         const imgEl = new Image();
         imgEl.onload = () => {
             const fabricImg = new FabricImage(imgEl, {
-                left: config.width / 2 - 60,
-                top: config.height / 2 - 60,
+                left: fabricCanvas!.width / 2,
+                top: fabricCanvas!.height / 2,
+                originX: "center",
+                originY: "center",
             });
 
             // Hitung skala agar tidak terlalu besar
@@ -753,13 +917,17 @@ const getPrintDataUrl = async (view: "front" | "back"): Promise<string> => {
 
     return new Promise((resolve) => {
         const tempCanvasEl = document.createElement("canvas");
-        const config = canvasConfigs[view];
-        tempCanvasEl.width = config.width;
-        tempCanvasEl.height = config.height;
+        const sizeData = store.shirtSizes[store.currentSize];
+        const config = shirtTypeConfigs[store.currentShirtType][view];
+        const pcm = config.pxPerCm;
+        const w = sizeData.width * pcm;
+        const h = sizeData.length * pcm;
+        tempCanvasEl.width = w;
+        tempCanvasEl.height = h;
 
         const tempCanvas = new Canvas(tempCanvasEl, {
-            width: config.width,
-            height: config.height,
+            width: w,
+            height: h,
             backgroundColor: "transparent",
         });
 
@@ -926,16 +1094,29 @@ const getMockupDataUrl = async (view: "front" | "back"): Promise<string> => {
             if (printDataUrl) {
                 const canvasImg = new Image();
                 canvasImg.onload = () => {
-                    const config = canvasConfigs[view];
                     const scaleX = img.width / 500;
                     const scaleY = img.height / 500;
 
+                    const cWidth = canvasWidth.value;
+                    const cHeight = canvasHeight.value;
+                    const cLeft = (500 - cWidth) / 2;
+
+                    // Gunakan baseTop & diff yang sesuai dengan view
+                    const refLength = 71;
+                    const sizeData = store.shirtSizes[store.currentSize];
+                    const config =
+                        shirtTypeConfigs[store.currentShirtType][view];
+                    const pcm = config.pxPerCm;
+                    const diff = (refLength - sizeData.length) * pcm;
+                    const baseTop = config.baseTop;
+                    const cTop = baseTop + diff * 0.25;
+
                     ctx.drawImage(
                         canvasImg,
-                        config.left * scaleX,
-                        config.top * scaleY,
-                        config.width * scaleX,
-                        config.height * scaleY,
+                        cLeft * scaleX,
+                        cTop * scaleY,
+                        cWidth * scaleX,
+                        cHeight * scaleY,
                     );
                     resolve(exportCanvas.toDataURL(mimeType, quality));
                 };
@@ -1087,7 +1268,7 @@ defineExpose({
                 <div
                     class="absolute inset-0 w-full h-full flex items-center justify-center transform-style-3d pointer-events-none transition-all duration-300 ease-out"
                     :style="{
-                        transform: `scale(${shirtScale * zoomScale})`,
+                        transform: `scale(${zoomScale})`,
                         transformOrigin: transformOriginStyle,
                         transition: isDetailZoomActive
                             ? 'transform 0.3s ease-out, transform-origin 0.15s ease-out'
@@ -1099,66 +1280,37 @@ defineExpose({
                         v-if="currentMockupUrl"
                         :src="currentMockupUrl"
                         class="absolute inset-0 w-full h-full object-contain pointer-events-none select-none filter drop-shadow-[0_25px_35px_rgba(0,0,0,0.18)] backface-hidden"
+                        :style="{
+                            transform: `scale(${shirtScale})`,
+                            transformOrigin: '50% 50%',
+                        }"
                         alt="Mockup Kaos"
                     />
 
-                    <!-- Area Bounding Box / Sablon (Konsisten dengan tema Sky Blue) -->
+                    <!-- Area Container Sablon (Invisible — tanpa border/pembatas visual) -->
                     <div
-                        class="absolute border border-dashed border-sky-400/30 rounded-xl flex items-center justify-center bg-white/[0.01] hover:border-sky-500/60 hover:bg-sky-500/[0.02] transition-all duration-300 group/area backface-hidden pointer-events-auto"
-                        :class="{
-                            'border-sky-500/65 bg-sky-500/[0.01] shadow-[0_0_20px_rgba(14,165,233,0.1)]':
-                                selectedObject,
-                        }"
+                        class="absolute flex items-center justify-center backface-hidden pointer-events-auto"
                         :style="printableAreaStyle"
                     >
                         <canvas ref="canvasRef"></canvas>
 
-                        <!-- CAD Style Ruler / Garis Dimensi Area Sablon (Horizontal Atas) -->
+                        <!-- Label Snap Teks Melayang secara Real-Time -->
                         <div
-                            class="absolute bottom-full left-0 right-0 mb-1.5 flex flex-col items-center justify-end pointer-events-none opacity-25 group-hover/area:opacity-100 group-[.border-sky-500\/65]/area:opacity-100 transition-all duration-300"
+                            v-if="activeSnapPoint"
+                            :style="{
+                                position: 'absolute',
+                                left: `${activeSnapPoint.x}px`,
+                                top: `${activeSnapPoint.y}px`,
+                                transform:
+                                    'translate(-50%, -100%) translateY(-12px)',
+                                zIndex: 40,
+                            }"
+                            class="bg-emerald-500 text-white text-[9px] font-black px-2.5 py-1 rounded-full shadow-md pointer-events-none whitespace-nowrap animate-bounce flex items-center gap-1 border border-emerald-400"
                         >
-                            <div
-                                class="w-full flex items-center justify-between relative px-1"
-                            >
-                                <span
-                                    class="w-1.5 h-1.5 border-b border-l border-sky-500 transform rotate-45"
-                                ></span>
-                                <div
-                                    class="flex-grow h-[1px] bg-gradient-to-r from-sky-500/20 via-sky-500 to-sky-500/20"
-                                ></div>
-                                <span
-                                    class="w-1.5 h-1.5 border-t border-r border-sky-500 transform rotate-45"
-                                ></span>
-                                <span
-                                    class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-sky-950/85 backdrop-blur-sm text-[8px] font-black font-mono text-sky-200 px-2 py-0.5 rounded-full border border-sky-400/20 shadow-sm"
-                                >
-                                    {{ printableAreaDimensions.width }} cm
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- CAD Style Ruler / Garis Dimensi Area Sablon (Vertikal Kiri) -->
-                        <div
-                            class="absolute right-full top-0 bottom-0 mr-1.5 flex items-center justify-end pointer-events-none opacity-25 group-hover/area:opacity-100 group-[.border-sky-500\/65]/area:opacity-100 transition-all duration-300"
-                        >
-                            <div
-                                class="h-full flex flex-col items-center justify-between relative py-1"
-                            >
-                                <span
-                                    class="w-1.5 h-1.5 border-t border-l border-sky-500 transform rotate-45"
-                                ></span>
-                                <div
-                                    class="flex-grow w-[1px] bg-gradient-to-b from-sky-500/20 via-sky-500 to-sky-500/20"
-                                ></div>
-                                <span
-                                    class="w-1.5 h-1.5 border-b border-r border-sky-500 transform rotate-45"
-                                ></span>
-                                <span
-                                    class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-sky-950/85 backdrop-blur-sm text-[8px] font-black font-mono text-sky-200 px-2 py-0.5 rounded-full border border-sky-400/20 shadow-sm whitespace-nowrap transform -rotate-90"
-                                >
-                                    {{ printableAreaDimensions.height }} cm
-                                </span>
-                            </div>
+                            <span
+                                class="w-1.5 h-1.5 rounded-full bg-white inline-block"
+                            ></span>
+                            {{ activeSnapPoint.name }}
                         </div>
 
                         <!-- Tooltip Dimensi Melayang secara Real-Time -->
@@ -1173,14 +1325,6 @@ defineExpose({
                                 {{ selectedObjectDimensions.height }} cm</span
                             >
                         </div>
-
-                        <!-- Label Area Cetak (Muncul saat tidak ada objek yang dipilih) -->
-                        <span
-                            v-if="!selectedObject"
-                            class="absolute bottom-2 text-[8px] bg-white dark:bg-slate-850 text-sky-850 dark:text-sky-200 border border-sky-200 dark:border-slate-800 px-2 py-0.5 backdrop-blur-sm rounded-md pointer-events-none tracking-widest uppercase font-black shadow-sm"
-                        >
-                            Area Sablon
-                        </span>
                     </div>
                 </div>
             </div>
@@ -1235,7 +1379,7 @@ defineExpose({
                     <PhArrowCounterClockwise :size="14" weight="bold" />
                 </button>
             </div>
-            
+
             <div class="w-[1px] h-5 bg-slate-200 dark:bg-slate-800"></div>
 
             <button
@@ -1420,14 +1564,6 @@ defineExpose({
             <span
                 class="flex items-center gap-1.5 bg-white/80 dark:bg-slate-850/80 border border-sky-100 dark:border-slate-800 px-2.5 py-1 rounded-lg shadow-sm"
             >
-                <span
-                    class="w-1.5 h-1.5 rounded-full bg-sky-500 inline-block animate-pulse"
-                ></span>
-                Area Sablon Dibatasi
-            </span>
-            <span
-                class="flex items-center gap-1.5 bg-white/80 dark:bg-slate-850/80 border border-sky-100 dark:border-slate-800 px-2.5 py-1 rounded-lg shadow-sm"
-            >
                 <PhCursorClick
                     class="text-sky-600 dark:text-sky-400"
                     :size="14"
@@ -1436,8 +1572,6 @@ defineExpose({
                 Klik ganda teks untuk mengubah isi
             </span>
         </div>
-
-
     </div>
 </template>
 

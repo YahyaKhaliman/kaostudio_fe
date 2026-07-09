@@ -23,7 +23,7 @@ import {
 } from "@phosphor-icons/vue";
 
 import { compressImage, formatBytes } from "../utils/imageCompressor";
-import sizeChartImg from "../assets/images/size chart.png";
+import sizeChartImg from "../assets/images/size_chart.png";
 
 const props = defineProps<{
     selectedObject: any;
@@ -47,22 +47,28 @@ const emit = defineEmits<{
 const store = useConfiguratorStore();
 const showSizeGuide = ref(false);
 
+// State Accordion Panel Kontrol (Membuka panel secara mandiri dan bersamaan)
+const isShirtOpen = ref(true);
+const isTextOpen = ref(false);
+const isUploadOpen = ref(false);
+const isBackdropOpen = ref(false);
+const isExportOpen = ref(false);
+
 // State Dropdown Ekspor
-const activeDropdown = ref<"print" | "mockup" | null>(null);
-const toggleDropdown = (type: "print" | "mockup") => {
-    if (activeDropdown.value === type) {
-        activeDropdown.value = null;
-    } else {
-        activeDropdown.value = type;
-    }
-};
+const isPrintDropdownOpen = ref(false);
+const isMockupDropdownOpen = ref(false);
+
+// State Dropdown Model Kaos & Sisi Tampilan
+const isModelDropdownOpen = ref(false);
+const isViewDropdownOpen = ref(false);
+
 const handlePrintExport = (view: "front" | "back" | "both") => {
     emit("export-print", view);
-    activeDropdown.value = null;
+    isPrintDropdownOpen.value = false;
 };
 const handleMockupExport = (view: "front" | "back" | "both") => {
     emit("export-mockup", view);
-    activeDropdown.value = null;
+    isMockupDropdownOpen.value = false;
 };
 
 // Template Ref
@@ -369,11 +375,25 @@ watch(
             textColor.value = newObj.fill || "#000000";
             textFont.value = newObj.fontFamily || "Inter";
             fontSize.value = newObj.fontSize || 24;
+
+            // Auto buka accordion Teks ketika objek teks dipilih di Canvas
+            isTextOpen.value = true;
         } else if (!newObj) {
             textInput.value = "";
         }
     },
     { deep: true },
+);
+
+// Tutup otomatis panel teks dan upload jika masuk ke mode preview 'both'
+watch(
+    () => store.currentView,
+    (newView) => {
+        if (newView === "both") {
+            isTextOpen.value = false;
+            isUploadOpen.value = false;
+        }
+    }
 );
 
 // Pemicu pembaruan saat pengguna mengubah input ketika objek teks sedang aktif
@@ -500,333 +520,48 @@ const onDrop = (e: DragEvent) => {
             class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-sky-400/50 to-transparent"
         ></div>
 
-        <!-- BAGIAN 1: Model & Sisi Pakaian -->
-        <div class="space-y-4">
-            <h3
-                class="text-xs font-black uppercase tracking-wider text-sky-800 dark:text-sky-400 flex items-center gap-2"
-            >
-                <PhTShirt :size="16" weight="bold" />
-                <span>Konfigurasi Kaos</span>
-            </h3>
-
-            <!-- Pilihan Model Kaos -->
-            <div v-if="store.currentView !== 'both'">
-                <label
-                    class="block text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 mb-2 tracking-wide"
-                    >Pilih Model Kaos:</label
-                >
-                <div
-                    class="grid grid-cols-3 gap-1 bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-sky-100 dark:border-slate-800"
-                >
-                    <button
-                        @click="
-                            store.currentShirtType = 'tshirt';
-                            store.saveToLocalStorage();
-                        "
-                        :class="[
-                            'py-2 px-1 text-[11px] font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer',
-                            store.currentShirtType === 'tshirt'
-                                ? 'bg-sky-600 text-white shadow-md shadow-sky-500/20 dark:shadow-slate-950/45 border border-sky-500/10'
-                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/50',
-                        ]"
-                    >
-                        T-Shirt
-                    </button>
-                    <button
-                        @click="
-                            store.currentShirtType = 'longTshirt';
-                            store.saveToLocalStorage();
-                        "
-                        :class="[
-                            'py-2 px-1 text-[11px] font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer',
-                            store.currentShirtType === 'longTshirt'
-                                ? 'bg-sky-600 text-white shadow-md shadow-sky-500/20 dark:shadow-slate-950/45 border border-sky-500/10'
-                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/50',
-                        ]"
-                    >
-                        Lengan Panjang
-                    </button>
-                    <button
-                        @click="
-                            store.currentShirtType = 'polo';
-                            store.saveToLocalStorage();
-                        "
-                        :class="[
-                            'py-2 px-1 text-[11px] font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer',
-                            store.currentShirtType === 'polo'
-                                ? 'bg-sky-600 text-white shadow-md shadow-sky-500/20 dark:shadow-slate-950/45 border border-sky-500/10'
-                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/50',
-                        ]"
-                    >
-                        Polo
-                    </button>
-                </div>
-            </div>
-
-            <!-- Sisi Kaos Toggle -->
-            <div>
-                <label
-                    class="block text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 mb-2 tracking-wide"
-                    >Pilih Tampilan Sisi:</label
-                >
-                <div
-                    class="grid grid-cols-3 gap-1 bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-sky-100 dark:border-slate-800"
-                >
-                    <button
-                        @click="store.currentView = 'front'"
-                        :class="[
-                            'py-2 px-1 text-[11px] font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer',
-                            store.currentView === 'front'
-                                ? 'bg-sky-600 text-white shadow-md shadow-sky-500/20 dark:shadow-slate-950/45 border border-sky-500/10'
-                                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/50',
-                        ]"
-                    >
-                        Depan
-                    </button>
-                    <button
-                        @click="store.currentView = 'back'"
-                        :class="[
-                            'py-2 px-1 text-[11px] font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer',
-                            store.currentView === 'back'
-                                ? 'bg-sky-600 text-white shadow-md shadow-sky-500/20 dark:shadow-slate-950/45 border border-sky-500/10'
-                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/50',
-                        ]"
-                    >
-                        Belakang
-                    </button>
-                    <button
-                        @click="store.currentView = 'both'"
-                        :class="[
-                            'py-2 px-1 text-[11px] font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-1 cursor-pointer',
-                            store.currentView === 'both'
-                                ? 'bg-sky-600 text-white shadow-md shadow-sky-500/20 dark:shadow-slate-950/45 border border-sky-500/10'
-                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/50',
-                        ]"
-                        title="Tampilkan tampak depan & belakang bersamaan (Preview saja)"
-                    >
-                        <PhEye :size="13" weight="bold" />
-                        <span>Preview</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Pilihan Ukuran Kaos (Sesuai Standar Perusahaan) -->
-            <!-- Pilihan Ukuran Kaos (Sesuai Standar Perusahaan) -->
-            <div class="space-y-2">
-                <div class="flex items-center justify-between">
-                    <label
-                        class="block text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wide"
-                        >Pilih Ukuran Kaos:</label
-                    >
-                    <button
-                        @click="showSizeGuide = true"
-                        class="text-[9px] font-bold text-sky-600 dark:text-sky-400 hover:text-sky-850 dark:hover:text-sky-300 transition-all flex items-center gap-1 cursor-pointer bg-transparent border-0 outline-none"
-                        type="button"
-                    >
-                        <PhRuler :size="10" weight="bold" />
-                        <span>Panduan Ukuran</span>
-                    </button>
-                </div>
-                <div
-                    class="grid grid-cols-6 gap-1 bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-sky-100 dark:border-slate-800"
-                >
-                    <button
-                        v-for="size in ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']"
-                        :key="size"
-                        @click="
-                            store.currentSize = size as any;
-                            store.saveToLocalStorage();
-                        "
-                        :class="[
-                            'py-1.5 px-0.5 text-[10px] font-extrabold rounded-lg transition-all duration-300 flex items-center justify-center cursor-pointer',
-                            store.currentSize === size
-                                ? 'bg-sky-600 text-white shadow-sm border border-sky-500/10'
-                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/50',
-                        ]"
-                    >
-                        {{ size }}
-                    </button>
-                </div>
-                <!-- Info Dimensi Ukuran Aktif (Informatif & Cantik) -->
-                <div
-                    class="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-sky-50/30 dark:bg-slate-950/20 border border-sky-100/40 dark:border-slate-805/60 rounded-xl text-[9px] text-slate-500 dark:text-slate-400"
-                >
-                    <span
-                        class="font-extrabold text-sky-600 dark:text-sky-400 uppercase"
-                        >Ukuran {{ store.currentSize }}:</span
-                    >
-                    <span
-                        >Lebar
-                        {{ store.shirtSizes[store.currentSize].width }} cm</span
-                    >
-                    <span class="text-slate-350 dark:text-slate-800">|</span>
-                    <span
-                        >Panjang
-                        {{ store.shirtSizes[store.currentSize].length }}
-                        cm</span
-                    >
-                </div>
-            </div>
-
-            <!-- Pilihan Warna Kaos -->
-            <div class="space-y-3.5">
-                <label
-                    class="block text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wide"
-                    >Pilih Warna Kaos:</label
-                >
-
-                <!-- Preset Pilihan Cepat -->
-                <div class="flex flex-wrap gap-2.5 items-center">
-                    <button
-                        v-for="color in presetColors"
-                        :key="color.hex"
-                        @click="store.shirtColor = color.hex"
-                        :title="color.name"
-                        :class="[
-                            'w-8 h-8 rounded-full border border-slate-200 dark:border-slate-800 transition-all duration-300 relative hover:scale-115 focus:outline-none flex items-center justify-center cursor-pointer',
-                            store.shirtColor.toLowerCase() ===
-                            color.hex.toLowerCase()
-                                ? 'ring-2 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 scale-105 shadow-[0_0_15px_rgba(14,165,233,0.3)]'
-                                : 'hover:border-slate-350',
-                        ]"
-                        :style="{ backgroundColor: color.hex }"
-                    >
-                        <!-- Checkmark untuk warna terpilih -->
-                        <span
-                            v-if="
-                                store.shirtColor.toLowerCase() ===
-                                color.hex.toLowerCase()
-                            "
-                            :class="[
-                                'text-[10px] font-black',
-                                color.hex === '#ffffff'
-                                    ? 'text-slate-900'
-                                    : 'text-white',
-                            ]"
-                        >
-                            ✓
-                        </span>
-                    </button>
-                </div>
-
-                <!-- Dropdown Pencarian Warna Perusahaan -->
-                <div class="relative w-full">
-                    <!-- Overlay transparan penutup click-away -->
-                    <div
-                        v-if="isColorDropdownOpen"
-                        @click="isColorDropdownOpen = false"
-                        class="fixed inset-0 z-10 bg-transparent"
-                    ></div>
-
-                    <!-- Tombol Pemicu Dropdown -->
-                    <button
-                        @click="isColorDropdownOpen = !isColorDropdownOpen"
-                        class="w-full flex items-center justify-between py-2.5 px-4 rounded-xl border border-sky-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100/80 dark:hover:bg-slate-900/60 transition-all text-xs font-bold text-slate-700 dark:text-slate-300 relative z-20 cursor-pointer"
-                    >
-                        <div class="flex items-center gap-2">
-                            <span
-                                class="w-4 h-4 rounded-full border border-slate-200/80 dark:border-slate-800 shadow-sm"
-                                :style="{ backgroundColor: store.shirtColor }"
-                            ></span>
-                            <span class="tracking-wide">{{
-                                activeColorName
-                            }}</span>
-                        </div>
-                        <PhCaretDown
-                            :size="14"
-                            weight="bold"
-                            class="text-slate-400 dark:text-slate-500"
-                        />
-                    </button>
-
-                    <!-- Panel Dropdown Pencarian -->
-                    <Transition name="fade">
-                        <div
-                            v-if="isColorDropdownOpen"
-                            class="absolute top-full mt-1.5 left-0 right-0 max-h-64 overflow-y-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-sky-100 dark:border-slate-800 rounded-xl shadow-xl z-20 p-2 space-y-2 animate-in fade-in slide-in-from-top-2 duration-150"
-                        >
-                            <!-- Input Pencarian -->
-                            <input
-                                v-model="searchQuery"
-                                type="text"
-                                placeholder="Cari warna perusahaan..."
-                                class="w-full py-2 px-3 text-[11px] font-bold border border-sky-100 dark:border-slate-850 rounded-lg focus:outline-none focus:ring-1 focus:ring-sky-500 bg-slate-50/50 dark:bg-slate-950/50 text-slate-800 dark:text-slate-200"
-                                @click.stop
-                            />
-
-                            <!-- List Pilihan Warna -->
-                            <div
-                                class="max-h-44 overflow-y-auto space-y-0.5 pr-1"
-                            >
-                                <button
-                                    v-for="color in filteredColors"
-                                    :key="color.name"
-                                    @click="selectCompanyColor(color)"
-                                    class="w-full py-2 px-3 rounded-lg text-left text-[11px] font-bold text-slate-700 dark:text-slate-350 hover:bg-sky-50 dark:hover:bg-slate-800 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-between cursor-pointer"
-                                >
-                                    <div class="flex items-center gap-2">
-                                        <span
-                                            class="w-3.5 h-3.5 rounded-full border border-slate-200 dark:border-slate-700"
-                                            :style="{
-                                                backgroundColor: color.hex,
-                                            }"
-                                        ></span>
-                                        <span>{{ color.name }}</span>
-                                    </div>
-                                    <span
-                                        v-if="
-                                            store.shirtColor.toLowerCase() ===
-                                            color.hex.toLowerCase()
-                                        "
-                                        class="text-sky-500 font-extrabold text-[10px]"
-                                        >✓</span
-                                    >
-                                </button>
-                                <div
-                                    v-if="filteredColors.length === 0"
-                                    class="text-center py-4 text-[10px] text-slate-400 dark:text-slate-500 font-bold"
-                                >
-                                    Warna tidak ditemukan
-                                </div>
-                            </div>
-                        </div>
-                    </Transition>
-                </div>
-            </div>
-        </div>
-
         <!-- BAGIAN Pengaturan Objek Layer / Hapus (Hanya muncul jika ada objek dipilih) -->
-        <Transition name="fade">
+        <Transition
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="opacity-0 -translate-y-2 scale-95"
+            enter-to-class="opacity-100 translate-y-0 scale-100"
+            leave-active-class="transition duration-150 ease-in"
+            leave-from-class="opacity-100 translate-y-0 scale-100"
+            leave-to-class="opacity-0 -translate-y-2 scale-95"
+        >
             <div
                 v-if="selectedObject"
-                class="padding-4 space-y-3.5 p-4.5 bg-slate-50/70 dark:bg-slate-950/40 border border-sky-100 dark:border-slate-800 rounded-2xl transition-all duration-300 relative overflow-hidden shadow-sm animate-in fade-in slide-in-from-top-4 duration-200"
+                class="space-y-3 p-4 bg-slate-50/70 dark:bg-slate-950/45 border border-sky-100/60 dark:border-slate-800 rounded-2xl transition-all duration-300 relative overflow-hidden shadow-sm"
             >
-                <!-- Glow strip -->
-                <div class="absolute left-0 top-0 bottom-0 w-[2px]"></div>
-
                 <h4
-                    class="text-[10px] font-black uppercase tracking-widest text-sky-850 dark:text-sky-350 pl-1"
+                    class="text-[10px] font-black uppercase tracking-widest text-sky-800 dark:text-sky-400 pl-1 flex items-center gap-1.5"
                 >
-                    Pengaturan Objek Terpilih
+                    <span
+                        class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-ping"
+                    ></span>
+                    <span>Pengaturan Objek Terpilih</span>
                 </h4>
                 <div class="grid grid-cols-3 gap-2">
                     <button
                         @click="emit('bring-to-front')"
-                        class="py-2 px-2.5 text-[9px] font-bold uppercase tracking-wider bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 hover:border-sky-300 dark:hover:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-850 rounded-xl text-slate-750 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-center gap-1 hover:scale-102 active:scale-98 shadow-sm cursor-pointer"
+                        class="py-2 px-2.5 text-[9px] font-bold uppercase tracking-wider bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 hover:border-sky-300 dark:hover:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-850 rounded-xl text-slate-750 dark:text-slate-350 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-center gap-1 hover:scale-102 active:scale-98 shadow-sm cursor-pointer"
+                        type="button"
                     >
                         <PhArrowUp :size="12" weight="bold" />
                         <span>Ke Depan</span>
                     </button>
                     <button
                         @click="emit('send-to-back')"
-                        class="py-2 px-2.5 text-[9px] font-bold uppercase tracking-wider bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 hover:border-sky-300 dark:hover:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-850 rounded-xl text-slate-750 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-center gap-1 hover:scale-102 active:scale-98 shadow-sm cursor-pointer"
+                        class="py-2 px-2.5 text-[9px] font-bold uppercase tracking-wider bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 hover:border-sky-300 dark:hover:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-850 rounded-xl text-slate-750 dark:text-slate-355 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-center gap-1 hover:scale-102 active:scale-98 shadow-sm cursor-pointer"
+                        type="button"
                     >
                         <PhArrowDown :size="12" weight="bold" />
                         <span>Ke Belakang</span>
                     </button>
                     <button
                         @click="emit('delete-selected')"
-                        class="py-2 px-2.5 text-[9px] font-bold uppercase tracking-wider bg-white dark:bg-slate-900 border border-red-100 dark:border-red-950/40 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl text-red-650 dark:text-red-400 hover:text-red-750 dark:hover:text-red-300 transition-all flex items-center justify-center gap-1 hover:scale-102 active:scale-98 shadow-sm cursor-pointer"
+                        class="py-2 px-2.5 text-[9px] font-bold uppercase tracking-wider bg-white dark:bg-slate-900 border border-red-100 dark:border-red-950/45 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl text-red-600 dark:text-red-400 hover:text-red-750 dark:hover:text-red-300 transition-all flex items-center justify-center gap-1 hover:scale-102 active:scale-98 shadow-sm cursor-pointer"
+                        type="button"
                     >
                         <PhTrash :size="12" weight="bold" />
                         <span>Hapus</span>
@@ -835,557 +570,1304 @@ const onDrop = (e: DragEvent) => {
             </div>
         </Transition>
 
+        <!-- Container Accordion -->
+        <div class="space-y-3">
+            <!-- 1. Konfigurasi Kaos Accordion -->
+            <div
+                class="border border-sky-100/60 dark:border-slate-800/80 rounded-2xl overflow-hidden transition-all duration-300 bg-white/40 dark:bg-slate-900/10"
+            >
+                <button
+                    @click="isShirtOpen = !isShirtOpen"
+                    class="w-full flex items-center justify-between p-3 rounded-2xl transition-all duration-300 text-left cursor-pointer outline-none select-none"
+                    :class="[
+                        isShirtOpen
+                            ? 'bg-sky-50/50 dark:bg-slate-950/40 border-b border-sky-100/60 dark:border-slate-800/80 text-sky-950 dark:text-white font-extrabold'
+                            : 'text-slate-700 dark:text-slate-350 hover:bg-slate-50/40 dark:hover:bg-slate-900/50',
+                    ]"
+                    type="button"
+                >
+                    <div class="flex items-center gap-3">
+                        <div
+                            :class="[
+                                'p-2 rounded-xl transition-all duration-300',
+                                isShirtOpen
+                                    ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500',
+                            ]"
+                        >
+                            <PhTShirt :size="16" weight="bold" />
+                        </div>
+                        <div>
+                            <span
+                                class="text-[11px] font-black uppercase tracking-wider block"
+                                >Konfigurasi Kaos</span
+                            >
+                            <span
+                                class="text-[9px] font-medium text-slate-400 dark:text-slate-500 block mt-0.5"
+                            >
+                                {{
+                                    store.currentShirtType === "tshirt"
+                                        ? "T-Shirt"
+                                        : store.currentShirtType ===
+                                            "longTshirt"
+                                          ? "Lengan Pjg"
+                                          : "Polo"
+                                }}
+                                • {{ store.currentSize }} •
+                                {{ activeColorName }}
+                            </span>
+                        </div>
+                    </div>
+                    <PhCaretDown
+                        :size="14"
+                        weight="bold"
+                        class="text-slate-400 transition-transform duration-300 mr-1"
+                        :class="{
+                            'transform rotate-180 text-sky-500': isShirtOpen,
+                        }"
+                    />
+                </button>
+
+                <Transition
+                    enter-active-class="transition-all duration-300 ease-out"
+                    enter-from-class="max-h-0 opacity-0 transform -translate-y-2"
+                    enter-to-class="max-h-[800px] opacity-100 transform translate-y-0"
+                    leave-active-class="transition-all duration-250 ease-in"
+                    leave-from-class="max-h-[800px] opacity-100 transform translate-y-0"
+                    leave-to-class="max-h-0 opacity-0 transform -translate-y-2"
+                >
+                    <div
+                        v-show="isShirtOpen"
+                        class="p-4 bg-white/30 dark:bg-slate-900/10 space-y-4"
+                                          <!-- Model Kaos & Sisi Tampilan (Symmetric Dropdowns) -->
+                        <div class="grid grid-cols-2 gap-3 relative">
+                            <!-- Overlay click-away untuk Model & View -->
+                            <div v-if="isModelDropdownOpen || isViewDropdownOpen" @click="isModelDropdownOpen = false; isViewDropdownOpen = false" class="fixed inset-0 z-20 cursor-default bg-transparent"></div>
+
+                            <!-- Model Kaos -->
+                            <div class="space-y-1.5 relative">
+                                <label class="block text-[9.5px] uppercase font-black text-slate-455 dark:text-slate-500 tracking-wider pl-1">Model Kaos</label>
+                                <div class="relative w-full">
+                                    <button
+                                        @click.stop="isModelDropdownOpen = !isModelDropdownOpen; isViewDropdownOpen = false"
+                                        class="w-full flex items-center justify-between py-2 px-2.5 rounded-xl border border-sky-100/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 hover:bg-slate-100/60 dark:hover:bg-slate-900/50 transition-all text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer outline-none active:scale-[0.98] relative z-25"
+                                        type="button"
+                                    >
+                                        <div class="flex items-center gap-1.5 min-w-0">
+                                            <div class="text-sky-600 dark:text-sky-400 flex-shrink-0">
+                                                <svg v-if="store.currentShirtType === 'tshirt'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5">
+                                                    <path d="M9 4a3 3 0 0 0 6 0" />
+                                                    <path d="M9 4H6L3 9h3v11h12V9h3l-3-5h-3" />
+                                                </svg>
+                                                <svg v-else-if="store.currentShirtType === 'longTshirt'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5">
+                                                    <path d="M9 4a3 3 0 0 0 6 0" />
+                                                    <path d="M9 4H6L2 14h2.5l2-6v12h11V8l2 6h2.5l-4-10h-3" />
+                                                </svg>
+                                                <svg v-else-if="store.currentShirtType === 'polo'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5">
+                                                    <path d="M9 4H6L3 9h3v11h12V9h3l-3-5h-3" />
+                                                    <path d="M9 4l3 3 3-3" />
+                                                    <path d="M12 7v5" />
+                                                    <circle cx="12" cy="8.5" r="0.5" fill="currentColor" />
+                                                    <circle cx="12" cy="10.5" r="0.5" fill="currentColor" />
+                                                </svg>
+                                            </div>
+                                            <span class="truncate text-[10px] font-extrabold uppercase tracking-wide">
+                                                {{ store.currentShirtType === 'tshirt' ? 'T-Shirt' : store.currentShirtType === 'longTshirt' ? 'Lengan Pjg' : 'Polo' }}
+                                            </span>
+                                        </div>
+                                        <PhCaretDown :size="10" weight="bold" class="text-slate-400 dark:text-slate-500 transition-transform duration-300 flex-shrink-0" :class="{ 'transform rotate-180': isModelDropdownOpen }" />
+                                    </button>
+
+                                    <!-- Dropdown Menu -->
+                                    <Transition name="fade">
+                                        <div v-if="isModelDropdownOpen" class="absolute top-full mt-1.5 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-sky-100 dark:border-slate-800 rounded-2xl shadow-xl z-30 p-1.5 space-y-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                                            <button
+                                                @click="store.currentShirtType = 'tshirt'; store.saveToLocalStorage(); isModelDropdownOpen = false"
+                                                class="w-full py-1.5 px-2.5 rounded-xl text-left text-[10px] font-bold text-slate-700 dark:text-slate-350 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-between cursor-pointer border-0 outline-none bg-transparent"
+                                                type="button"
+                                            >
+                                                <div class="flex items-center gap-2 min-w-0">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-505 flex-shrink-0">
+                                                        <path d="M9 4a3 3 0 0 0 6 0" />
+                                                        <path d="M9 4H6L3 9h3v11h12V9h3l-3-5h-3" />
+                                                    </svg>
+                                                    <div class="min-w-0">
+                                                        <div class="font-extrabold uppercase text-[9px] truncate">T-Shirt</div>
+                                                        <div class="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium truncate">Oblong Standar</div>
+                                                    </div>
+                                                </div>
+                                                <span v-if="store.currentShirtType === 'tshirt'" class="text-sky-500 font-extrabold text-[9px] flex-shrink-0">✓</span>
+                                            </button>
+                                            <button
+                                                @click="store.currentShirtType = 'longTshirt'; store.saveToLocalStorage(); isModelDropdownOpen = false"
+                                                class="w-full py-1.5 px-2.5 rounded-xl text-left text-[10px] font-bold text-slate-700 dark:text-slate-355 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-between cursor-pointer border-0 outline-none bg-transparent"
+                                                type="button"
+                                            >
+                                                <div class="flex items-center gap-2 min-w-0">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-550 flex-shrink-0">
+                                                        <path d="M9 4a3 3 0 0 0 6 0" />
+                                                        <path d="M9 4H6L2 14h2.5l2-6v12h11V8l2 6h2.5l-4-10h-3" />
+                                                    </svg>
+                                                    <div class="min-w-0">
+                                                        <div class="font-extrabold uppercase text-[9px] truncate">Lengan Pjg</div>
+                                                        <div class="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium truncate">Lengan Panjang</div>
+                                                    </div>
+                                                </div>
+                                                <span v-if="store.currentShirtType === 'longTshirt'" class="text-sky-500 font-extrabold text-[9px] flex-shrink-0">✓</span>
+                                            </button>
+                                            <button
+                                                @click="store.currentShirtType = 'polo'; store.saveToLocalStorage(); isModelDropdownOpen = false"
+                                                class="w-full py-1.5 px-2.5 rounded-xl text-left text-[10px] font-bold text-slate-700 dark:text-slate-355 hover:bg-sky-50 dark:hover:bg-slate-855 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-between cursor-pointer border-0 outline-none bg-transparent"
+                                                type="button"
+                                            >
+                                                <div class="flex items-center gap-2 min-w-0">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-550 flex-shrink-0">
+                                                        <path d="M9 4H6L3 9h3v11h12V9h3l-3-5h-3" />
+                                                        <path d="M9 4l3 3 3-3" />
+                                                        <path d="M12 7v5" />
+                                                        <circle cx="12" cy="8.5" r="0.5" fill="currentColor" />
+                                                        <circle cx="12" cy="10.5" r="0.5" fill="currentColor" />
+                                                    </svg>
+                                                    <div class="min-w-0">
+                                                        <div class="font-extrabold uppercase text-[9px] truncate">Kaos Polo</div>
+                                                        <div class="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium truncate">Kerah / Formal</div>
+                                                    </div>
+                                                </div>
+                                                <span v-if="store.currentShirtType === 'polo'" class="text-sky-500 font-extrabold text-[9px] flex-shrink-0">✓</span>
+                                            </button>
+                                        </div>
+                                    </Transition>
+                                </div>
+                            </div>
+
+                            <!-- Sisi Tampilan -->
+                            <div class="space-y-1.5 relative">
+                                <label class="block text-[9.5px] uppercase font-black text-slate-455 dark:text-slate-500 tracking-wider pl-1">Sisi Tampilan</label>
+                                <div class="relative w-full">
+                                    <button
+                                        @click.stop="isViewDropdownOpen = !isViewDropdownOpen; isModelDropdownOpen = false"
+                                        class="w-full flex items-center justify-between py-2 px-2.5 rounded-xl border border-sky-100/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 hover:bg-slate-100/60 dark:hover:bg-slate-900/50 transition-all text-xs font-bold text-slate-700 dark:text-slate-355 cursor-pointer outline-none active:scale-[0.98] relative z-25"
+                                        type="button"
+                                    >
+                                        <div class="flex items-center gap-1.5 min-w-0">
+                                            <div class="text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+                                                <svg v-if="store.currentView === 'front'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5">
+                                                    <path d="M9 4a3 3 0 0 0 6 0" />
+                                                    <path d="M9 4H6L3 9h3v11h12V9h3l-3-5h-3" />
+                                                </svg>
+                                                <svg v-else-if="store.currentView === 'back'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5">
+                                                    <path d="M9 4h6" />
+                                                    <path d="M9 4H6L3 9h3v11h12V9h3l-3-5h-3" />
+                                                </svg>
+                                                <PhEye v-else-if="store.currentView === 'both'" :size="13" weight="bold" />
+                                            </div>
+                                            <span class="truncate text-[10px] font-extrabold uppercase tracking-wide">
+                                                {{ store.currentView === 'front' ? 'Depan' : store.currentView === 'back' ? 'Belakang' : 'Preview' }}
+                                            </span>
+                                        </div>
+                                        <PhCaretDown :size="10" weight="bold" class="text-slate-400 dark:text-slate-500 transition-transform duration-300 flex-shrink-0" :class="{ 'transform rotate-180': isViewDropdownOpen }" />
+                                    </button>
+
+                                    <!-- Dropdown Menu -->
+                                    <Transition name="fade">
+                                        <div v-if="isViewDropdownOpen" class="absolute top-full mt-1.5 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-sky-100 dark:border-slate-800 rounded-2xl shadow-xl z-30 p-1.5 space-y-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                                            <button
+                                                @click="store.currentView = 'front'; isViewDropdownOpen = false"
+                                                class="w-full py-1.5 px-2.5 rounded-xl text-left text-[10px] font-bold text-slate-700 dark:text-slate-305 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-between cursor-pointer border-0 outline-none bg-transparent"
+                                                type="button"
+                                            >
+                                                <div class="flex items-center gap-2 min-w-0">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-550 flex-shrink-0">
+                                                        <path d="M9 4a3 3 0 0 0 6 0" />
+                                                        <path d="M9 4H6L3 9h3v11h12V9h3l-3-5h-3" />
+                                                    </svg>
+                                                    <div class="min-w-0">
+                                                        <div class="font-extrabold uppercase text-[9px] truncate">Tampak Depan</div>
+                                                        <div class="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium truncate">Edit Sisi Depan</div>
+                                                    </div>
+                                                </div>
+                                                <span v-if="store.currentView === 'front'" class="text-sky-500 font-extrabold text-[9px] flex-shrink-0">✓</span>
+                                            </button>
+                                            <button
+                                                @click="store.currentView = 'back'; isViewDropdownOpen = false"
+                                                class="w-full py-1.5 px-2.5 rounded-xl text-left text-[10px] font-bold text-slate-700 dark:text-slate-355 hover:bg-sky-50 dark:hover:bg-slate-855 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-between cursor-pointer border-0 outline-none bg-transparent"
+                                                type="button"
+                                            >
+                                                <div class="flex items-center gap-2 min-w-0">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-slate-400 dark:text-slate-550 flex-shrink-0">
+                                                        <path d="M9 4h6" />
+                                                        <path d="M9 4H6L3 9h3v11h12V9h3l-3-5h-3" />
+                                                    </svg>
+                                                    <div class="min-w-0">
+                                                        <div class="font-extrabold uppercase text-[9px] truncate">Tampak Belakang</div>
+                                                        <div class="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium truncate">Edit Sisi Belakang</div>
+                                                    </div>
+                                                </div>
+                                                <span v-if="store.currentView === 'back'" class="text-sky-500 font-extrabold text-[9px] flex-shrink-0">✓</span>
+                                            </button>
+                                            <button
+                                                @click="store.currentView = 'both'; isViewDropdownOpen = false"
+                                                class="w-full py-1.5 px-2.5 rounded-xl text-left text-[10px] font-bold text-slate-700 dark:text-slate-355 hover:bg-sky-50 dark:hover:bg-slate-855 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-between cursor-pointer border-0 outline-none bg-transparent"
+                                                type="button"
+                                            >
+                                                <div class="flex items-center gap-2 min-w-0">
+                                                    <PhEye :size="13" weight="bold" class="text-slate-400 dark:text-slate-550 flex-shrink-0" />
+                                                    <div class="min-w-0">
+                                                        <div class="font-extrabold uppercase text-[9px] truncate">Preview</div>
+                                                        <div class="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium truncate">Pratinjau Gabungan</div>
+                                                    </div>
+                                                </div>
+                                                <span v-if="store.currentView === 'both'" class="text-sky-500 font-extrabold text-[9px] flex-shrink-0">✓</span>
+                                            </button>
+                                        </div>
+                                    </Transition>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ukuran Kaos -->
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label
+                                    class="block text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wide"
+                                    >Pilih Ukuran Kaos:</label
+                                >
+                                <button
+                                    @click="showSizeGuide = true"
+                                    class="text-[9px] font-bold text-sky-600 dark:text-sky-400 hover:text-sky-850 dark:hover:text-sky-300 transition-all flex items-center gap-1 cursor-pointer bg-transparent border-0 outline-none"
+                                    type="button"
+                                >
+                                    <PhRuler :size="10" weight="bold" />
+                                    <span>Panduan Ukuran</span>
+                                </button>
+                            </div>
+                            <div
+                                class="grid grid-cols-6 gap-1 bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-sky-100 dark:border-slate-800"
+                            >
+                                <button
+                                    v-for="size in [
+                                        'S',
+                                        'M',
+                                        'L',
+                                        'XL',
+                                        'XXL',
+                                        'XXXL',
+                                    ]"
+                                    :key="size"
+                                    @click="
+                                        store.currentSize = size as any;
+                                        store.saveToLocalStorage();
+                                    "
+                                    :class="[
+                                        'py-1.5 px-0.5 text-[10px] font-extrabold rounded-lg transition-all duration-300 flex items-center justify-center cursor-pointer',
+                                        store.currentSize === size
+                                            ? 'bg-sky-600 text-white shadow-sm border border-sky-500/10'
+                                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/50',
+                                    ]"
+                                    type="button"
+                                >
+                                    {{ size }}
+                                </button>
+                            </div>
+                            <div
+                                class="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-sky-50/30 dark:bg-slate-950/20 border border-sky-100/40 dark:border-slate-805/60 rounded-xl text-[9px] text-slate-500 dark:text-slate-400"
+                            >
+                                <span
+                                    class="font-extrabold text-sky-600 dark:text-sky-400 uppercase"
+                                    >Ukuran {{ store.currentSize }}:</span
+                                >
+                                <span
+                                    >Lebar
+                                    {{
+                                        store.shirtSizes[store.currentSize]
+                                            .width
+                                    }}
+                                    cm</span
+                                >
+                                <span class="text-slate-350 dark:text-slate-800"
+                                    >|</span
+                                >
+                                <span
+                                    >Panjang
+                                    {{
+                                        store.shirtSizes[store.currentSize]
+                                            .length
+                                    }}
+                                    cm</span
+                                >
+                            </div>
+                        </div>
+
+                        <!-- Pilihan Warna Kaos -->
+                        <div class="space-y-2.5">
+                            <label
+                                class="block text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wide"
+                                >Pilih Warna Kaos:</label
+                            >
+                            <div class="flex flex-wrap gap-2 items-center">
+                                <button
+                                    v-for="color in presetColors"
+                                    :key="color.hex"
+                                    @click="store.shirtColor = color.hex"
+                                    :title="color.name"
+                                    :class="[
+                                        'w-7 h-7 rounded-full border border-slate-200 dark:border-slate-800 transition-all duration-300 relative hover:scale-115 focus:outline-none flex items-center justify-center cursor-pointer',
+                                        store.shirtColor.toLowerCase() ===
+                                        color.hex.toLowerCase()
+                                            ? 'ring-2 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 scale-105 shadow-[0_0_12px_rgba(14,165,233,0.3)]'
+                                            : 'hover:border-slate-350',
+                                    ]"
+                                    :style="{ backgroundColor: color.hex }"
+                                    type="button"
+                                >
+                                    <span
+                                        v-if="
+                                            store.shirtColor.toLowerCase() ===
+                                            color.hex.toLowerCase()
+                                        "
+                                        :class="[
+                                            'text-[9px] font-black',
+                                            color.hex === '#ffffff'
+                                                ? 'text-slate-900'
+                                                : 'text-white',
+                                        ]"
+                                        >✓</span
+                                    >
+                                </button>
+                            </div>
+
+                            <!-- Dropdown Pencarian Warna Perusahaan -->
+                            <div class="relative w-full">
+                                <div
+                                    v-if="isColorDropdownOpen"
+                                    @click="isColorDropdownOpen = false"
+                                    class="fixed inset-0 z-10 bg-transparent"
+                                ></div>
+                                <button
+                                    @click="
+                                        isColorDropdownOpen =
+                                            !isColorDropdownOpen
+                                    "
+                                    class="w-full flex items-center justify-between py-2 px-3.5 rounded-xl border border-sky-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100/80 dark:hover:bg-slate-900/60 transition-all text-xs font-bold text-slate-700 dark:text-slate-300 relative z-20 cursor-pointer"
+                                    type="button"
+                                >
+                                    <div class="flex items-center gap-2">
+                                        <span
+                                            class="w-4 h-4 rounded-full border border-slate-200/80 dark:border-slate-800 shadow-sm"
+                                            :style="{
+                                                backgroundColor:
+                                                    store.shirtColor,
+                                            }"
+                                        ></span>
+                                        <span
+                                            class="tracking-wide text-[11px]"
+                                            >{{ activeColorName }}</span
+                                        >
+                                    </div>
+                                    <PhCaretDown
+                                        :size="12"
+                                        weight="bold"
+                                        class="text-slate-400 dark:text-slate-500"
+                                    />
+                                </button>
+
+                                <Transition name="fade">
+                                    <div
+                                        v-if="isColorDropdownOpen"
+                                        class="absolute top-full mt-1.5 left-0 right-0 max-h-56 overflow-y-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-sky-100 dark:border-slate-800 rounded-xl shadow-xl z-20 p-2 space-y-2 animate-in fade-in slide-in-from-top-2 duration-150"
+                                    >
+                                        <input
+                                            v-model="searchQuery"
+                                            type="text"
+                                            placeholder="Cari warna perusahaan..."
+                                            class="w-full py-1.5 px-3.5 text-[11px] font-bold border border-sky-100 dark:border-slate-850 rounded-lg focus:outline-none focus:ring-1 focus:ring-sky-500 bg-slate-50/50 dark:bg-slate-950/50 text-slate-800 dark:text-slate-200"
+                                            @click.stop
+                                        />
+                                        <div
+                                            class="max-h-36 overflow-y-auto space-y-0.5 pr-1"
+                                        >
+                                            <button
+                                                v-for="color in filteredColors"
+                                                :key="color.name"
+                                                @click="
+                                                    selectCompanyColor(color)
+                                                "
+                                                class="w-full py-1.5 px-2.5 rounded-lg text-left text-[11px] font-bold text-slate-700 dark:text-slate-350 hover:bg-sky-50 dark:hover:bg-slate-800 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-between cursor-pointer"
+                                                type="button"
+                                            >
+                                                <div
+                                                    class="flex items-center gap-2"
+                                                >
+                                                    <span
+                                                        class="w-3 h-3 rounded-full border border-slate-200 dark:border-slate-700"
+                                                        :style="{
+                                                            backgroundColor:
+                                                                color.hex,
+                                                        }"
+                                                    ></span>
+                                                    <span>{{
+                                                        color.name
+                                                    }}</span>
+                                                </div>
+                                                <span
+                                                    v-if="
+                                                        store.shirtColor.toLowerCase() ===
+                                                        color.hex.toLowerCase()
+                                                    "
+                                                    class="text-sky-500 font-extrabold text-[9px]"
+                                                    >✓</span
+                                                >
+                                            </button>
+                                            <div
+                                                v-if="
+                                                    filteredColors.length === 0
+                                                "
+                                                class="text-center py-3 text-[10px] text-slate-400 dark:text-slate-500 font-bold"
+                                            >
+                                                Warna tidak ditemukan
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Transition>
+                            </div>
+                        </div>
+                    </div>
+                </Transition>
+            </div>
+
+                <!-- 2. Tambahkan / Edit Teks Accordion -->
+                <div
+                    class="border border-sky-100/60 dark:border-slate-800/80 rounded-2xl overflow-hidden transition-all duration-300 bg-white/40 dark:bg-slate-900/10"
+                    :class="{ 'opacity-40 select-none pointer-events-none': store.currentView === 'both' }"
+                >
+                    <button
+                        @click="isTextOpen = !isTextOpen"
+                        :disabled="store.currentView === 'both'"
+                        class="w-full flex items-center justify-between p-3 rounded-2xl transition-all duration-300 text-left outline-none select-none"
+                        :class="[
+                            isTextOpen
+                                ? 'bg-sky-50/50 dark:bg-slate-950/40 border-b border-sky-100/60 dark:border-slate-800/80 text-sky-950 dark:text-white font-extrabold'
+                                : 'text-slate-700 dark:text-slate-350 hover:bg-slate-50/40 dark:hover:bg-slate-900/50',
+                            store.currentView === 'both' ? 'cursor-not-allowed' : 'cursor-pointer'
+                        ]"
+                        type="button"
+                    >
+                        <div class="flex items-center gap-3">
+                            <div
+                                :class="[
+                                    'p-2 rounded-xl transition-all duration-300',
+                                    isTextOpen
+                                        ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500',
+                                ]"
+                            >
+                                <PhTextT :size="16" weight="bold" />
+                            </div>
+                            <div>
+                                <span
+                                    class="text-[11px] font-black uppercase tracking-wider block"
+                                >
+                                    {{
+                                        isTextSelected
+                                            ? "Edit Teks Aktif"
+                                            : "Tambahkan Teks"
+                                    }}
+                                </span>
+                                <span
+                                    class="text-[9px] font-medium text-slate-400 dark:text-slate-500 block mt-0.5 max-w-[200px] truncate"
+                                >
+                                    {{
+                                        textInput.trim()
+                                            ? '"' +
+                                              (textInput.length > 20
+                                                  ? textInput.substring(0, 18) +
+                                                    "..."
+                                                  : textInput) +
+                                              '"'
+                                            : isTextSelected
+                                              ? "Teks Terpilih"
+                                              : "Tambahkan tulisan ke kaos"
+                                    }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span
+                                v-if="isTextSelected"
+                                class="text-[8px] bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-900 px-1.5 py-0.5 rounded-md font-extrabold tracking-wide uppercase"
+                                >Terpilih</span
+                            >
+                            <PhCaretDown
+                                :size="14"
+                                weight="bold"
+                                class="text-slate-400 transition-transform duration-300 mr-1"
+                                :class="{
+                                    'transform rotate-180 text-sky-500':
+                                        isTextOpen,
+                                }"
+                            />
+                        </div>
+                    </button>
+
+                    <Transition
+                        enter-active-class="transition-all duration-300 ease-out"
+                        enter-from-class="max-h-0 opacity-0 transform -translate-y-2"
+                        enter-to-class="max-h-[800px] opacity-100 transform translate-y-0"
+                        leave-active-class="transition-all duration-250 ease-in"
+                        leave-from-class="max-h-[800px] opacity-100 transform translate-y-0"
+                        leave-to-class="max-h-0 opacity-0 transform -translate-y-2"
+                    >
+                        <div
+                            v-show="isTextOpen"
+                            class="p-4 bg-white/30 dark:bg-slate-900/10 space-y-4"
+                        >
+                            <!-- Input Text -->
+                            <div class="space-y-1.5">
+                                <div class="relative">
+                                    <span
+                                        class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"
+                                    >
+                                        <PhTextT :size="14" weight="bold" />
+                                    </span>
+                                    <input
+                                        type="text"
+                                        v-model="textInput"
+                                        @input="handleTextChange"
+                                        placeholder="Tulis teks desain Anda..."
+                                        class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl py-2 pl-9 pr-3 text-xs focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 focus:bg-white text-slate-800 dark:text-slate-200 placeholder-slate-400 transition-all duration-200"
+                                    />
+                                </div>
+                            </div>
+
+                            <!-- Kontrol Styling Teks -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <!-- Pilihan Font -->
+                                <div class="space-y-1">
+                                    <label
+                                        class="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wide"
+                                        >Jenis Font:</label
+                                    >
+                                    <div class="relative">
+                                        <select
+                                            v-model="textFont"
+                                            @change="handleFontChange"
+                                            class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl py-2 px-3 text-[11px] focus:outline-none focus:border-sky-500 focus:bg-white text-slate-800 dark:text-slate-200 transition-all duration-200 cursor-pointer appearance-none"
+                                        >
+                                            <option
+                                                v-for="font in fontList"
+                                                :key="font"
+                                                :value="font"
+                                                :style="{ fontFamily: font }"
+                                                class="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs py-1"
+                                            >
+                                                {{ font }}
+                                            </option>
+                                        </select>
+                                        <span
+                                            class="absolute right-3 inset-y-0 flex items-center pointer-events-none text-slate-400 text-[8px]"
+                                            >▼</span
+                                        >
+                                    </div>
+                                </div>
+
+                                <!-- Warna Teks -->
+                                <div class="space-y-1">
+                                    <label
+                                        class="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wide"
+                                        >Warna Sablon:</label
+                                    >
+                                    <div class="flex gap-2 items-center">
+                                        <div
+                                            class="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 flex items-center justify-center hover:border-sky-500/50 transition-colors"
+                                        >
+                                            <input
+                                                type="color"
+                                                v-model="textColor"
+                                                @input="handleColorChange"
+                                                class="absolute w-[150%] h-[150%] cursor-pointer border-0 p-0 bg-transparent"
+                                            />
+                                        </div>
+                                        <span
+                                            class="text-[10px] uppercase text-slate-600 dark:text-slate-400 font-mono font-bold select-all tracking-wider"
+                                            >{{ textColor }}</span
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Ukuran Font Slider -->
+                            <div
+                                v-if="isTextSelected"
+                                class="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800/40"
+                            >
+                                <div
+                                    class="flex justify-between text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wide"
+                                >
+                                    <span>Ukuran Teks:</span>
+                                    <span
+                                        class="font-mono text-sky-600 dark:text-sky-400 font-bold"
+                                        >{{ fontSize }}px</span
+                                    >
+                                </div>
+                                <input
+                                    type="range"
+                                    v-model.number="fontSize"
+                                    @input="handleFontSizeChange"
+                                    min="12"
+                                    max="120"
+                                    step="1"
+                                    class="w-full accent-sky-600 bg-slate-200 dark:bg-slate-800 h-1.5 rounded-lg cursor-pointer transition-all"
+                                />
+                            </div>
+
+                            <!-- Tombol Aksi -->
+                            <div class="flex gap-2">
+                                <button
+                                    @click="handleAddText"
+                                    :disabled="!textInput.trim()"
+                                    class="flex-grow py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:hover:bg-sky-600 text-white font-bold text-xs transition-all duration-300 flex items-center justify-center gap-1.5 border border-sky-500/10 shadow-sm active:scale-[0.98] cursor-pointer"
+                                    type="button"
+                                >
+                                    <PhPlus :size="12" weight="bold" />
+                                    <span>{{
+                                        isTextSelected
+                                            ? "Duplikat Baru"
+                                            : "Tambahkan Teks"
+                                    }}</span>
+                                </button>
+                                <button
+                                    v-if="isTextSelected"
+                                    @click="emit('deselect-object')"
+                                    class="py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-350 border border-slate-200 dark:border-slate-750 transition-all font-bold text-xs shadow-sm active:scale-98 cursor-pointer"
+                                    title="Selesai Edit"
+                                    type="button"
+                                >
+                                    Selesai
+                                </button>
+                            </div>
+                        </div>
+                    </Transition>
+                </div>
+
+                <!-- 3. Unggah Gambar Accordion -->
+                <div
+                    class="border border-sky-100/60 dark:border-slate-800/80 rounded-2xl overflow-hidden transition-all duration-300 bg-white/40 dark:bg-slate-900/10"
+                    :class="{ 'opacity-40 select-none pointer-events-none': store.currentView === 'both' }"
+                >
+                    <button
+                        @click="isUploadOpen = !isUploadOpen"
+                        :disabled="store.currentView === 'both'"
+                        class="w-full flex items-center justify-between p-3 rounded-2xl transition-all duration-300 text-left outline-none select-none"
+                        :class="[
+                            isUploadOpen
+                                ? 'bg-sky-50/50 dark:bg-slate-950/40 border-b border-sky-100/60 dark:border-slate-800/80 text-sky-950 dark:text-white font-extrabold'
+                                : 'text-slate-700 dark:text-slate-350 hover:bg-slate-50/40 dark:hover:bg-slate-900/50',
+                            store.currentView === 'both' ? 'cursor-not-allowed' : 'cursor-pointer'
+                        ]"
+                        type="button"
+                    >
+                        <div class="flex items-center gap-3">
+                            <div
+                                :class="[
+                                    'p-2 rounded-xl transition-all duration-300',
+                                    isUploadOpen
+                                        ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500',
+                                ]"
+                            >
+                                <PhUploadSimple :size="16" weight="bold" />
+                            </div>
+                            <div>
+                                <span
+                                    class="text-[11px] font-black uppercase tracking-wider block"
+                                    >Unggah Gambar</span
+                                >
+                                <span
+                                    class="text-[9px] font-medium text-slate-400 dark:text-slate-500 block mt-0.5"
+                                >
+                                    {{
+                                        store.uploadedImages.length > 0
+                                            ? store.uploadedImages.length +
+                                              " gambar di cache"
+                                            : "Unggah logo atau cetakan sablon"
+                                    }}
+                                </span>
+                            </div>
+                        </div>
+                        <PhCaretDown
+                            :size="14"
+                            weight="bold"
+                            class="text-slate-400 transition-transform duration-300 mr-1"
+                            :class="{
+                                'transform rotate-180 text-sky-500':
+                                    isUploadOpen,
+                            }"
+                        />
+                    </button>
+
+                    <Transition
+                        enter-active-class="transition-all duration-300 ease-out"
+                        enter-from-class="max-h-0 opacity-0 transform -translate-y-2"
+                        enter-to-class="max-h-[800px] opacity-100 transform translate-y-0"
+                        leave-active-class="transition-all duration-250 ease-in"
+                        leave-from-class="max-h-[800px] opacity-100 transform translate-y-0"
+                        leave-to-class="max-h-0 opacity-0 transform -translate-y-2"
+                    >
+                        <div
+                            v-show="isUploadOpen"
+                            class="p-4 bg-white/30 dark:bg-slate-900/10 space-y-4"
+                        >
+                            <div
+                                @dragover="onDragOver"
+                                @dragleave="onDragLeave"
+                                @drop="onDrop"
+                                :class="[
+                                    'border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 bg-slate-50/50 dark:bg-slate-950/20 relative group',
+                                    isDragActive
+                                        ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/40 shadow-[0_0_15px_rgba(14,165,233,0.15)]'
+                                        : 'border-sky-200 dark:border-slate-800 hover:border-sky-400 hover:bg-sky-50/30 dark:hover:bg-slate-950/30',
+                                ]"
+                                @click="triggerFileInput"
+                            >
+                                <input
+                                    type="file"
+                                    ref="fileInput"
+                                    @change="handleFileUpload"
+                                    accept="image/*"
+                                    class="hidden"
+                                />
+                                <PhUploadSimple
+                                    class="h-7 w-7 text-slate-400 group-hover:text-sky-500 transition-colors duration-300 mb-1.5 group-hover:animate-bounce"
+                                    :size="24"
+                                    weight="bold"
+                                />
+                                <span
+                                    class="text-[11px] font-bold text-slate-700 dark:text-slate-300 text-center"
+                                    >Klik / Seret Logo ke Sini</span
+                                >
+                                <span class="text-[9px] text-slate-400 mt-0.5"
+                                    >PNG, JPG, SVG maks 10MB</span
+                                >
+                            </div>
+
+                            <div
+                                v-if="uploadError"
+                                class="text-[9px] font-semibold text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 py-2 px-3 rounded-xl flex items-center gap-1.5 shadow-sm"
+                            >
+                                <span
+                                    class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"
+                                ></span>
+                                {{ uploadError }}
+                            </div>
+
+                            <!-- Galeri Cache Gambar -->
+                            <div
+                                v-if="store.uploadedImages.length > 0"
+                                class="space-y-2 pt-1"
+                            >
+                                <label
+                                    class="block text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider"
+                                    >Desain diunggah:</label
+                                >
+                                <div class="grid grid-cols-3 gap-2">
+                                    <div
+                                        v-for="img in store.uploadedImages"
+                                        :key="img.id"
+                                        class="relative group/thumb border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-950 h-14 cursor-pointer hover:border-sky-500/60 hover:shadow-lg transition-all duration-300 flex items-center justify-center"
+                                        @click="emit('add-image', img.dataUrl)"
+                                        :title="`Klik untuk menambahkan ke kaos. Ukuran: ${formatBytes(img.size)}`"
+                                    >
+                                        <img
+                                            :src="img.dataUrl"
+                                            class="w-full h-full object-contain p-1.5"
+                                        />
+                                        <div
+                                            class="absolute inset-0 bg-sky-950/80 opacity-0 group-hover/thumb:opacity-100 transition-opacity duration-300 flex flex-col justify-center items-center text-[7px] text-sky-100 p-0.5 text-center"
+                                        >
+                                            <span
+                                                class="font-black text-sky-300 tracking-wider"
+                                                >KOMPRES</span
+                                            >
+                                            <span
+                                                class="font-bold font-mono mt-0.5"
+                                                >{{
+                                                    formatBytes(img.size)
+                                                }}</span
+                                            >
+                                        </div>
+                                        <button
+                                            @click.stop="
+                                                store.removeUploadedImage(
+                                                    img.id,
+                                                )
+                                            "
+                                            class="absolute top-0.5 right-0.5 bg-red-50 dark:bg-slate-900 border border-red-200 dark:border-slate-800 p-0.5 rounded-md text-red-600 dark:text-red-400 hover:bg-red-100 transition-all opacity-0 group-hover/thumb:opacity-100 z-10"
+                                            type="button"
+                                        >
+                                            <PhTrash :size="8" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Transition>
+                </div>
+
+            <!-- 4. Latar Belakang Mockup Accordion -->
+            <div
+                class="border border-sky-100/60 dark:border-slate-800/80 rounded-2xl overflow-hidden transition-all duration-300 bg-white/40 dark:bg-slate-900/10"
+            >
+                <button
+                    @click="isBackdropOpen = !isBackdropOpen"
+                    class="w-full flex items-center justify-between p-3 rounded-2xl transition-all duration-300 text-left cursor-pointer outline-none select-none"
+                    :class="[
+                        isBackdropOpen
+                            ? 'bg-sky-50/50 dark:bg-slate-950/40 border-b border-sky-100/60 dark:border-slate-800/80 text-sky-950 dark:text-white font-extrabold'
+                            : 'text-slate-700 dark:text-slate-350 hover:bg-slate-50/40 dark:hover:bg-slate-900/50',
+                    ]"
+                    type="button"
+                >
+                    <div class="flex items-center gap-3">
+                        <div
+                            :class="[
+                                'p-2 rounded-xl transition-all duration-300',
+                                isBackdropOpen
+                                    ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500',
+                            ]"
+                        >
+                            <PhPalette :size="16" weight="bold" />
+                        </div>
+                        <div>
+                            <span
+                                class="text-[11px] font-black uppercase tracking-wider block"
+                                >Latar Belakang</span
+                            >
+                            <span
+                                class="text-[9px] font-medium text-slate-400 dark:text-slate-500 block mt-0.5"
+                            >
+                                {{
+                                    store.backdropType === "solid"
+                                        ? "Warna Solid"
+                                        : store.backdropType === "checkerboard"
+                                          ? "Catur Transparan"
+                                          : store.backdropType === "gradient"
+                                            ? "Studio"
+                                            : "Foto Kustom"
+                                }}
+                            </span>
+                        </div>
+                    </div>
+                    <PhCaretDown
+                        :size="14"
+                        weight="bold"
+                        class="text-slate-400 transition-transform duration-300 mr-1"
+                        :class="{
+                            'transform rotate-180 text-sky-500': isBackdropOpen,
+                        }"
+                    />
+                </button>
+
+                <Transition
+                    enter-active-class="transition-all duration-300 ease-out"
+                    enter-from-class="max-h-0 opacity-0 transform -translate-y-2"
+                    enter-to-class="max-h-[800px] opacity-100 transform translate-y-0"
+                    leave-active-class="transition-all duration-250 ease-in"
+                    leave-from-class="max-h-[800px] opacity-100 transform translate-y-0"
+                    leave-to-class="max-h-0 opacity-0 transform -translate-y-2"
+                >
+                    <div
+                        v-show="isBackdropOpen"
+                        class="p-4 bg-white/30 dark:bg-slate-900/10 space-y-4"
+                    >
+                        <!-- Jenis Latar Belakang -->
+                        <div
+                            class="grid grid-cols-4 gap-1.5 bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-sky-100 dark:border-slate-800"
+                        >
+                            <button
+                                v-for="type in [
+                                    'solid',
+                                    'checkerboard',
+                                    'gradient',
+                                    'custom',
+                                ] as const"
+                                :key="type"
+                                @click="store.backdropType = type"
+                                :class="[
+                                    'py-1.5 px-0.5 text-[9px] font-black rounded-lg capitalize transition-all duration-300 flex flex-col items-center justify-center gap-1 cursor-pointer',
+                                    store.backdropType === type
+                                        ? 'bg-sky-600 text-white shadow shadow-sky-500/15 border border-sky-500/10'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-850 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-800/40',
+                                ]"
+                                type="button"
+                            >
+                                <PhPaintBrush
+                                    v-if="type === 'solid'"
+                                    :size="12"
+                                    weight="bold"
+                                />
+                                <PhGridFour
+                                    v-else-if="type === 'checkerboard'"
+                                    :size="12"
+                                    weight="bold"
+                                />
+                                <PhSparkle
+                                    v-else-if="type === 'gradient'"
+                                    :size="12"
+                                    weight="bold"
+                                />
+                                <PhImage
+                                    v-else-if="type === 'custom'"
+                                    :size="12"
+                                    weight="bold"
+                                />
+                                <span>{{
+                                    type === "solid"
+                                        ? "Warna"
+                                        : type === "checkerboard"
+                                          ? "Catur"
+                                          : type === "gradient"
+                                            ? "Studio"
+                                            : "Foto"
+                                }}</span>
+                            </button>
+                        </div>
+
+                        <!-- Solid Color Picker -->
+                        <div
+                            v-if="store.backdropType === 'solid'"
+                            class="flex items-center justify-between bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-sky-100 dark:border-slate-800"
+                        >
+                            <span
+                                class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wide"
+                                >Warna Latar:</span
+                            >
+                            <div class="flex gap-2.5 items-center">
+                                <div
+                                    class="relative w-7 h-7 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-850 bg-slate-100 flex items-center justify-center hover:border-sky-500/50 transition-colors"
+                                >
+                                    <input
+                                        type="color"
+                                        :value="store.backdropColor"
+                                        @input="
+                                            (e) =>
+                                                (store.backdropColor = (
+                                                    e.target as HTMLInputElement
+                                                ).value)
+                                        "
+                                        class="absolute w-[150%] h-[150%] cursor-pointer border-0 p-0 bg-transparent"
+                                    />
+                                </div>
+                                <span
+                                    class="text-[10px] font-mono uppercase text-slate-700 dark:text-slate-300 font-bold tracking-wider"
+                                    >{{ store.backdropColor }}</span
+                                >
+                                <button
+                                    @click="store.backdropColor = '#0f172a'"
+                                    class="text-[8px] font-bold uppercase tracking-wider py-1 px-2.5 border border-slate-200 dark:border-slate-700 hover:border-slate-350 dark:hover:border-slate-650 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-450 transition-colors"
+                                    type="button"
+                                >
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Custom Image Backdrop -->
+                        <div
+                            v-if="store.backdropType === 'custom'"
+                            class="space-y-3"
+                        >
+                            <div
+                                @click="triggerBackdropFileInput"
+                                class="border border-dashed border-sky-200 dark:border-slate-800 hover:border-sky-300 hover:bg-sky-50/40 dark:hover:bg-slate-950/20 bg-slate-50 dark:bg-slate-950 rounded-xl p-3.5 flex flex-col items-center justify-center cursor-pointer transition-colors group"
+                            >
+                                <input
+                                    type="file"
+                                    ref="backdropFileInput"
+                                    @change="handleBackdropUpload"
+                                    accept="image/*"
+                                    class="hidden"
+                                />
+                                <PhImage
+                                    class="text-slate-400 group-hover:text-sky-500 transition-colors mb-1"
+                                    :size="16"
+                                    weight="bold"
+                                />
+                                <span
+                                    class="text-[9px] font-bold text-slate-700 dark:text-slate-300"
+                                    >Pilih Foto Latar Belakang</span
+                                >
+                                <span class="text-[8px] text-slate-400 mt-0.5"
+                                    >Lantai kayu, gantungan, atau dekorasi</span
+                                >
+                            </div>
+                            <div
+                                v-if="store.customBackdropUrl"
+                                class="flex items-center justify-between bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-sky-100 dark:border-slate-800"
+                            >
+                                <div class="flex items-center gap-2">
+                                    <img
+                                        :src="store.customBackdropUrl"
+                                        class="w-7 h-7 object-cover rounded-lg border border-slate-200 dark:border-slate-800"
+                                    />
+                                    <span
+                                        class="text-[9px] font-bold text-slate-500 dark:text-slate-400"
+                                        >Gambar terpasang</span
+                                    >
+                                </div>
+                                <button
+                                    @click="store.customBackdropUrl = null"
+                                    class="text-[9px] font-bold text-red-600 hover:text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-2 py-1 rounded-lg transition-all"
+                                    type="button"
+                                >
+                                    Hapus
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </Transition>
+            </div>
+
+            <!-- 5. Ekspor Hasil Desain Accordion -->
+            <div
+                class="border border-sky-100/60 dark:border-slate-800/80 rounded-2xl overflow-hidden transition-all duration-300 bg-white/40 dark:bg-slate-900/10"
+            >
+                <button
+                    @click="isExportOpen = !isExportOpen"
+                    class="w-full flex items-center justify-between p-3 rounded-2xl transition-all duration-300 text-left cursor-pointer outline-none select-none"
+                    :class="[
+                        isExportOpen
+                            ? 'bg-sky-50/50 dark:bg-slate-950/40 border-b border-sky-100/60 dark:border-slate-800/80 text-sky-950 dark:text-white font-extrabold'
+                            : 'text-slate-700 dark:text-slate-350 hover:bg-slate-50/40 dark:hover:bg-slate-900/50',
+                    ]"
+                    type="button"
+                >
+                    <div class="flex items-center gap-3">
+                        <div
+                            :class="[
+                                'p-2 rounded-xl transition-all duration-300',
+                                isExportOpen
+                                    ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500',
+                            ]"
+                        >
+                            <PhDownloadSimple :size="16" weight="bold" />
+                        </div>
+                        <div>
+                            <span
+                                class="text-[11px] font-black uppercase tracking-wider block"
+                                >Ekspor Desain</span
+                            >
+                            <span
+                                class="text-[9px] font-medium text-slate-400 dark:text-slate-500 block mt-0.5"
+                            >
+                                Simpan sablon transparan atau mockup gambar PNG
+                            </span>
+                        </div>
+                    </div>
+                    <PhCaretDown
+                        :size="14"
+                        weight="bold"
+                        class="text-slate-400 transition-transform duration-300 mr-1"
+                        :class="{
+                            'transform rotate-180 text-sky-500': isExportOpen,
+                        }"
+                    />
+                </button>
+
+                <Transition
+                    enter-active-class="transition-all duration-300 ease-out"
+                    enter-from-class="max-h-0 opacity-0 transform -translate-y-2"
+                    enter-to-class="max-h-[800px] opacity-100 transform translate-y-0"
+                    leave-active-class="transition-all duration-250 ease-in"
+                    leave-from-class="max-h-[800px] opacity-100 transform translate-y-0"
+                    leave-to-class="max-h-0 opacity-0 transform -translate-y-2"
+                >
+                    <div
+                        v-show="isExportOpen"
+                        class="p-4 bg-white/30 dark:bg-slate-900/10 space-y-4"
+                    >
+                        <div class="grid grid-cols-2 gap-3 relative">
+                            <!-- Overlay click-away -->
+                            <div
+                                v-if="
+                                    isPrintDropdownOpen || isMockupDropdownOpen
+                                "
+                                @click="
+                                    isPrintDropdownOpen = false;
+                                    isMockupDropdownOpen = false;
+                                "
+                                class="fixed inset-0 z-10 cursor-default bg-transparent"
+                            ></div>
+
+                            <!-- Unduh Sablon -->
+                            <div class="relative">
+                                <button
+                                    @click.stop="
+                                        isPrintDropdownOpen =
+                                            !isPrintDropdownOpen
+                                    "
+                                    class="w-full py-2.5 px-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all duration-300 flex flex-col items-center justify-center gap-1 border border-slate-200 dark:border-slate-700 hover:border-slate-350 shadow-sm active:scale-[0.98] group cursor-pointer"
+                                    type="button"
+                                >
+                                    <PhFloppyDisk
+                                        class="text-slate-500 dark:text-slate-405 group-hover:text-slate-750 transition-colors"
+                                        :size="16"
+                                        weight="bold"
+                                    />
+                                    <div
+                                        class="flex flex-col items-center text-center"
+                                    >
+                                        <span class="text-[10px]"
+                                            >Unduh Sablon</span
+                                        >
+                                        <span
+                                            class="text-[7.5px] text-slate-500 dark:text-slate-400 font-medium mt-0.5"
+                                            >PNG Transparan</span
+                                        >
+                                    </div>
+                                </button>
+
+                                <Transition name="fade">
+                                    <div
+                                        v-if="isPrintDropdownOpen"
+                                        class="absolute bottom-full mb-2 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-sky-100 dark:border-slate-800 rounded-2xl shadow-xl z-20 py-1.5 overflow-hidden flex flex-col text-left animate-in fade-in slide-in-from-bottom-2 duration-150"
+                                    >
+                                        <button
+                                            @click="handlePrintExport('front')"
+                                            class="px-3.5 py-2 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-sky-50 dark:hover:bg-slate-800 hover:text-sky-600 transition-all text-left flex items-center gap-1.5 cursor-pointer"
+                                            type="button"
+                                        >
+                                            <span
+                                                class="w-1.5 h-1.5 rounded-full bg-sky-500"
+                                            ></span>
+                                            Tampak Depan
+                                        </button>
+                                        <button
+                                            @click="handlePrintExport('back')"
+                                            class="px-3.5 py-2 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-sky-50 dark:hover:bg-slate-800 hover:text-sky-600 transition-all text-left flex items-center gap-1.5 cursor-pointer"
+                                            type="button"
+                                        >
+                                            <span
+                                                class="w-1.5 h-1.5 rounded-full bg-sky-500"
+                                            ></span>
+                                            Tampak Belakang
+                                        </button>
+                                        <div
+                                            class="h-[1px] bg-sky-100/50 dark:bg-slate-800 my-1"
+                                        ></div>
+                                        <button
+                                            @click="handlePrintExport('both')"
+                                            class="px-3.5 py-2 text-[10px] font-extrabold text-sky-600 dark:text-sky-400 hover:bg-sky-600 dark:hover:bg-sky-655 hover:text-white transition-all text-left flex items-center gap-1.5 cursor-pointer"
+                                            type="button"
+                                        >
+                                            <PhSparkle
+                                                :size="10"
+                                                weight="bold"
+                                            />
+                                            Depan + Belakang
+                                        </button>
+                                    </div>
+                                </Transition>
+                            </div>
+
+                            <!-- Unduh Mockup -->
+                            <div class="relative">
+                                <button
+                                    @click.stop="
+                                        isMockupDropdownOpen =
+                                            !isMockupDropdownOpen
+                                    "
+                                    class="w-full py-2.5 px-3 rounded-2xl bg-sky-600 hover:bg-sky-550 text-white font-bold text-xs transition-all duration-300 flex flex-col items-center justify-center gap-1 border border-sky-500/10 shadow-sm active:scale-[0.98] group cursor-pointer"
+                                    type="button"
+                                >
+                                    <PhImage
+                                        class="text-sky-100 group-hover:text-white transition-colors"
+                                        :size="16"
+                                        weight="bold"
+                                    />
+                                    <div
+                                        class="flex flex-col items-center text-center"
+                                    >
+                                        <span class="text-[10px]"
+                                            >Unduh Mockup</span
+                                        >
+                                        <span
+                                            class="text-[7.5px] text-sky-100/90 font-medium mt-0.5"
+                                            >Mockup Kaos PNG</span
+                                        >
+                                    </div>
+                                </button>
+
+                                <Transition name="fade">
+                                    <div
+                                        v-if="isMockupDropdownOpen"
+                                        class="absolute bottom-full mb-2 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-sky-100 dark:border-slate-800 rounded-2xl shadow-xl z-20 py-1.5 overflow-hidden flex flex-col text-left animate-in fade-in slide-in-from-bottom-2 duration-150"
+                                    >
+                                        <button
+                                            @click="handleMockupExport('front')"
+                                            class="px-3.5 py-2 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-sky-50 dark:hover:bg-slate-800 hover:text-sky-600 transition-all text-left flex items-center gap-1.5 cursor-pointer"
+                                            type="button"
+                                        >
+                                            <span
+                                                class="w-1.5 h-1.5 rounded-full bg-sky-500"
+                                            ></span>
+                                            Tampak Depan
+                                        </button>
+                                        <button
+                                            @click="handleMockupExport('back')"
+                                            class="px-3.5 py-2 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-sky-50 dark:hover:bg-slate-800 hover:text-sky-600 transition-all text-left flex items-center gap-1.5 cursor-pointer"
+                                            type="button"
+                                        >
+                                            <span
+                                                class="w-1.5 h-1.5 rounded-full bg-sky-500"
+                                            ></span>
+                                            Tampak Belakang
+                                        </button>
+                                        <div
+                                            class="h-[1px] bg-sky-100/50 dark:bg-slate-800 my-1"
+                                        ></div>
+                                        <button
+                                            @click="handleMockupExport('both')"
+                                            class="px-3.5 py-2 text-[10px] font-extrabold text-sky-600 dark:text-sky-400 hover:bg-sky-600 dark:hover:bg-sky-655 hover:text-white transition-all text-left flex items-center gap-1.5 cursor-pointer"
+                                            type="button"
+                                        >
+                                            <PhSparkle
+                                                :size="10"
+                                                weight="bold"
+                                            />
+                                            Depan + Belakang
+                                        </button>
+                                    </div>
+                                </Transition>
+                            </div>
+                        </div>
+                    </div>
+                </Transition>
+            </div>
+        </div>
+
         <!-- Pesan Info Mode Preview (Hanya tampil saat mode 'both') -->
         <div
             v-if="store.currentView === 'both'"
-            class="p-5 bg-sky-50/80 border border-sky-200/60 rounded-2xl text-center space-y-3 shadow-sm animate-in fade-in duration-300"
+            class="p-4 bg-sky-50/70 dark:bg-slate-950/40 border border-sky-100 dark:border-slate-800 rounded-2xl text-center space-y-2 shadow-sm animate-in fade-in duration-300"
         >
             <div
-                class="w-10 h-10 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mx-auto shadow-sm"
+                class="w-8 h-8 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-600 dark:text-sky-400 flex items-center justify-center mx-auto shadow-sm"
             >
-                <PhSparkle :size="20" weight="bold" class="animate-pulse" />
+                <PhSparkle :size="16" weight="bold" class="animate-pulse" />
             </div>
-            <h4 class="font-extrabold text-sm text-sky-950">
+            <h4 class="font-extrabold text-xs text-sky-950 dark:text-sky-300">
                 Mode Preview Kedua Sisi
             </h4>
-            <p class="text-[11px] text-slate-500 leading-relaxed">
-                Anda sedang melihat tampilan kaos tampak depan dan tampak
-                belakang secara bersamaan. Untuk mengedit desain sablon, silakan
-                pilih tombol <strong>Depan</strong> or
-                <strong>Belakang</strong> pada menu konfigurasi di atas.
+            <p
+                class="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed"
+            >
+                Anda melihat tampilan depan & belakang sekaligus. Untuk
+                memanipulasi sablon, silakan pilih sisi
+                <strong>Depan</strong> atau <strong>Belakang</strong> pada tab
+                "Konfigurasi Kaos" di atas.
             </p>
-        </div>
-
-        <template v-if="store.currentView !== 'both'">
-            <hr class="border-sky-100/50" />
-
-            <!-- BAGIAN 2: Tambahkan / Edit Teks -->
-            <div class="space-y-4">
-                <div class="flex justify-between items-center">
-                    <h3
-                        class="text-xs font-black uppercase tracking-wider text-sky-800 flex items-center gap-2"
-                    >
-                        <PhTextT :size="16" weight="bold" />
-                        <span>{{
-                            isTextSelected
-                                ? "Edit Teks Aktif"
-                                : "Tambahkan Teks"
-                        }}</span>
-                    </h3>
-                    <span
-                        v-if="isTextSelected"
-                        class="text-[9px] bg-sky-100 text-sky-700 border border-sky-200 px-2 py-0.5 rounded-md font-bold tracking-wide"
-                        >Teks Dipilih</span
-                    >
-                </div>
-
-                <!-- Input Text -->
-                <div class="space-y-1.5">
-                    <div class="relative">
-                        <span
-                            class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400"
-                        >
-                            <PhTextT :size="16" weight="bold" />
-                        </span>
-                        <input
-                            type="text"
-                            v-model="textInput"
-                            @input="handleTextChange"
-                            placeholder="Tulis teks desain Anda..."
-                            class="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-3 text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 focus:bg-white text-slate-800 placeholder-slate-400 transition-all duration-200"
-                        />
-                    </div>
-                </div>
-
-                <!-- Kontrol Styling Teks (Muncul jika ada teks dipilih ATAU sedang ingin menambahkan teks baru) -->
-                <div class="grid grid-cols-2 gap-3">
-                    <!-- Pilihan Font -->
-                    <div class="space-y-1.5">
-                        <label
-                            class="text-[10px] uppercase font-bold text-slate-500 tracking-wide"
-                            >Jenis Font:</label
-                        >
-                        <div class="relative">
-                            <select
-                                v-model="textFont"
-                                @change="handleFontChange"
-                                class="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:border-sky-500 focus:bg-white text-slate-800 transition-all duration-200 cursor-pointer appearance-none"
-                            >
-                                <option
-                                    v-for="font in fontList"
-                                    :key="font"
-                                    :value="font"
-                                    :style="{ fontFamily: font }"
-                                    class="bg-white text-slate-800 text-sm py-1.5"
-                                >
-                                    {{ font }}
-                                </option>
-                            </select>
-                            <span
-                                class="absolute right-3 inset-y-0 flex items-center pointer-events-none text-slate-400 text-[10px]"
-                                >▼</span
-                            >
-                        </div>
-                    </div>
-
-                    <!-- Warna Teks -->
-                    <div class="space-y-1.5">
-                        <label
-                            class="text-[10px] uppercase font-bold text-slate-500 tracking-wide"
-                            >Warna Sablon:</label
-                        >
-                        <div class="flex gap-2.5 items-center">
-                            <div
-                                class="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center hover:border-sky-500/50 transition-colors"
-                            >
-                                <input
-                                    type="color"
-                                    v-model="textColor"
-                                    @input="handleColorChange"
-                                    class="absolute w-[150%] h-[150%] cursor-pointer border-0 p-0 bg-transparent"
-                                />
-                            </div>
-                            <span
-                                class="text-xs uppercase text-slate-700 font-mono font-bold select-all tracking-wider"
-                                >{{ textColor }}</span
-                            >
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Ukuran Font Slider (Hanya aktif jika teks dipilih untuk diedit) -->
-                <div v-if="isTextSelected" class="space-y-1.5 pt-1.5">
-                    <div
-                        class="flex justify-between text-[10px] uppercase font-bold text-slate-500 tracking-wide"
-                    >
-                        <span>Ukuran Teks:</span>
-                        <span class="font-mono text-sky-600 font-bold"
-                            >{{ fontSize }}px</span
-                        >
-                    </div>
-                    <input
-                        type="range"
-                        v-model.number="fontSize"
-                        @input="handleFontSizeChange"
-                        min="12"
-                        max="120"
-                        step="1"
-                        class="w-full accent-sky-600 bg-slate-200 h-1.5 rounded-lg cursor-pointer transition-all"
-                    />
-                </div>
-
-                <!-- Tombol Buat Teks Baru (Selalu Tampil dengan Tombol Batal untuk Kemudahan Akses) -->
-                <div class="flex gap-2">
-                    <button
-                        @click="handleAddText"
-                        :disabled="!textInput.trim()"
-                        class="flex-grow py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:hover:bg-sky-600 text-white font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 border border-sky-500/10 shadow-md active:scale-[0.98]"
-                    >
-                        <PhPlus :size="14" weight="bold" />
-                        <span>{{
-                            isTextSelected ? "Duplikat Baru" : "Tambahkan Teks"
-                        }}</span>
-                    </button>
-                    <button
-                        v-if="isTextSelected"
-                        @click="emit('deselect-object')"
-                        class="py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-slate-600 hover:text-slate-800 border border-slate-200 transition-all font-bold text-xs shadow-sm hover:scale-102 active:scale-98"
-                        title="Batal Pilih / Selesai Edit"
-                    >
-                        Batal
-                    </button>
-                </div>
-            </div>
-
-            <hr class="border-sky-100/50" />
-
-            <!-- BAGIAN 3: Unggah Desain / Logo -->
-            <div class="space-y-4">
-                <h3
-                    class="text-xs font-black uppercase tracking-wider text-sky-800 flex items-center gap-2"
-                >
-                    <PhUploadSimple :size="16" weight="bold" />
-                    <span>Unggah Logo / Gambar</span>
-                </h3>
-
-                <div
-                    @dragover="onDragOver"
-                    @dragleave="onDragLeave"
-                    @drop="onDrop"
-                    :class="[
-                        'border-2 border-dashed rounded-2xl p-5 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 bg-slate-50/60 relative group',
-                        isDragActive
-                            ? 'border-sky-500 bg-sky-50 shadow-[0_0_20px_rgba(14,165,233,0.15)]'
-                            : 'border-sky-200 hover:border-sky-400 hover:bg-sky-50/50',
-                    ]"
-                    @click="triggerFileInput"
-                >
-                    <input
-                        type="file"
-                        ref="fileInput"
-                        @change="handleFileUpload"
-                        accept="image/*"
-                        class="hidden"
-                    />
-                    <!-- Upload Icon (Micro-animated) -->
-                    <PhUploadSimple
-                        class="h-8 w-8 text-slate-400 group-hover:text-sky-500 transition-colors duration-300 mb-2 group-hover:animate-bounce"
-                        :size="32"
-                        weight="bold"
-                    />
-                    <span class="text-xs font-bold text-slate-700 text-center"
-                        >Klik atau seret logo ke sini</span
-                    >
-                    <span class="text-[10px] text-slate-400 mt-1"
-                        >PNG, JPG, SVG maks 10MB</span
-                    >
-                </div>
-
-                <!-- Pesan Error Pengaman -->
-                <div
-                    v-if="uploadError"
-                    class="text-[10px] font-semibold text-red-500 bg-red-50 border border-red-200 py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shadow-sm"
-                >
-                    <span
-                        class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"
-                    ></span>
-                    {{ uploadError }}
-                </div>
-
-                <!-- Galeri Gambar Saya (storage sementara) -->
-                <div
-                    v-if="store.uploadedImages.length > 0"
-                    class="space-y-2.5 pt-1"
-                >
-                    <label
-                        class="block text-[10px] uppercase font-black text-slate-500 tracking-wider"
-                        >Galeri Cache Sementara:</label
-                    >
-                    <div class="grid grid-cols-3 gap-2">
-                        <div
-                            v-for="img in store.uploadedImages"
-                            :key="img.id"
-                            class="relative group/thumb border border-slate-200 rounded-xl overflow-hidden bg-slate-50 h-16 cursor-pointer hover:border-sky-500/60 hover:shadow-lg hover:shadow-sky-500/5 transition-all duration-300 flex items-center justify-center"
-                            @click="emit('add-image', img.dataUrl)"
-                            :title="`Klik untuk menambahkan. Ukuran: ${formatBytes(img.size)} (Kompresi dari ${formatBytes(img.originalSize)})`"
-                        >
-                            <img
-                                :src="img.dataUrl"
-                                class="w-full h-full object-contain p-2"
-                            />
-
-                            <!-- Overlay Hover Info -->
-                            <div
-                                class="absolute inset-0 bg-sky-950/80 opacity-0 group-hover/thumb:opacity-100 transition-opacity duration-300 flex flex-col justify-center items-center text-[8px] text-sky-100 p-0.5 text-center"
-                            >
-                                <span
-                                    class="font-black text-sky-300 tracking-wider"
-                                    >KOMPRES</span
-                                >
-                                <span class="font-bold font-mono mt-0.5">{{
-                                    formatBytes(img.size)
-                                }}</span>
-                            </div>
-
-                            <!-- Delete Button -->
-                            <button
-                                @click.stop="store.removeUploadedImage(img.id)"
-                                class="absolute top-1 right-1 bg-red-50 border border-red-200 p-1 rounded-lg text-red-600 hover:bg-red-100 transition-all opacity-0 group-hover/thumb:opacity-100 z-10"
-                                title="Hapus dari cache"
-                            >
-                                <PhTrash :size="10" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </template>
-
-        <hr class="border-sky-100/50" />
-
-        <!-- BAGIAN 4: Latar Belakang Mockup -->
-        <div class="space-y-4">
-            <h3
-                class="text-xs font-black uppercase tracking-wider text-sky-800 flex items-center gap-2"
-            >
-                <PhPalette :size="16" weight="bold" />
-                <span>Latar Belakang Mockup</span>
-            </h3>
-
-            <!-- Pilihan Jenis Latar Belakang -->
-            <div>
-                <div
-                    class="grid grid-cols-4 gap-1 bg-slate-50 p-1 rounded-xl border border-sky-100"
-                >
-                    <button
-                        v-for="type in [
-                            'solid',
-                            'checkerboard',
-                            'gradient',
-                            'custom',
-                        ] as const"
-                        :key="type"
-                        @click="store.backdropType = type"
-                        :class="[
-                            'py-2 px-1 text-[9px] font-black rounded-lg capitalize transition-all duration-300 flex flex-col items-center justify-center gap-1',
-                            store.backdropType === type
-                                ? 'bg-sky-600 text-white shadow shadow-sky-500/15 border border-sky-500/10'
-                                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/30',
-                        ]"
-                    >
-                        <!-- Ikon Mini representatif -->
-                        <PhPaintBrush
-                            v-if="type === 'solid'"
-                            :size="14"
-                            weight="bold"
-                        />
-                        <PhGridFour
-                            v-else-if="type === 'checkerboard'"
-                            :size="14"
-                            weight="bold"
-                        />
-                        <PhSparkle
-                            v-else-if="type === 'gradient'"
-                            :size="14"
-                            weight="bold"
-                        />
-                        <PhImage
-                            v-else-if="type === 'custom'"
-                            :size="14"
-                            weight="bold"
-                        />
-
-                        <span>{{
-                            type === "solid"
-                                ? "Warna"
-                                : type === "checkerboard"
-                                  ? "Catur"
-                                  : type === "gradient"
-                                    ? "Studio"
-                                    : "Foto"
-                        }}</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Detail Kustomisasi Solid Color -->
-            <div
-                v-if="store.backdropType === 'solid'"
-                class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-sky-100 transition-all"
-            >
-                <span
-                    class="text-[10px] uppercase font-bold text-slate-500 tracking-wide"
-                    >Warna Latar:</span
-                >
-                <div class="flex gap-3 items-center">
-                    <div
-                        class="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center hover:border-sky-500/50 transition-colors"
-                    >
-                        <input
-                            type="color"
-                            :value="store.backdropColor"
-                            @input="
-                                (e) =>
-                                    (store.backdropColor = (
-                                        e.target as HTMLInputElement
-                                    ).value)
-                            "
-                            class="absolute w-[150%] h-[150%] cursor-pointer border-0 p-0 bg-transparent"
-                        />
-                    </div>
-                    <span
-                        class="text-xs font-mono uppercase text-slate-700 font-bold tracking-wider"
-                        >{{ store.backdropColor }}</span
-                    >
-                    <button
-                        @click="store.backdropColor = '#0f172a'"
-                        class="text-[9px] font-bold uppercase tracking-wider py-1.5 px-3 border border-slate-200 hover:border-slate-300 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors"
-                    >
-                        Reset
-                    </button>
-                </div>
-            </div>
-
-            <!-- Detail Kustomisasi Custom Backdrop Image -->
-            <div
-                v-if="store.backdropType === 'custom'"
-                class="space-y-3 transition-all"
-            >
-                <div
-                    @click="triggerBackdropFileInput"
-                    class="border border-dashed border-sky-200 hover:border-sky-300 hover:bg-sky-50 bg-slate-50 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-colors group"
-                >
-                    <input
-                        type="file"
-                        ref="backdropFileInput"
-                        @change="handleBackdropUpload"
-                        accept="image/*"
-                        class="hidden"
-                    />
-                    <PhImage
-                        class="text-slate-400 group-hover:text-sky-500 transition-colors mb-1.5"
-                        :size="20"
-                        weight="bold"
-                    />
-                    <span class="text-[10px] font-bold text-slate-700"
-                        >Pilih Foto Latar Belakang</span
-                    >
-                    <span class="text-[8px] text-slate-400 mt-0.5"
-                        >Lantai kayu, hanger, atau foto studio</span
-                    >
-                </div>
-                <!-- Preview Custom Image -->
-                <div
-                    v-if="store.customBackdropUrl"
-                    class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-sky-100"
-                >
-                    <div class="flex items-center gap-2.5">
-                        <img
-                            :src="store.customBackdropUrl"
-                            class="w-8 h-8 object-cover rounded-lg border border-slate-200"
-                        />
-                        <span class="text-[10px] font-bold text-slate-500"
-                            >Gambar terpasang</span
-                        >
-                    </div>
-                    <button
-                        @click="store.customBackdropUrl = null"
-                        class="text-[10px] font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-all"
-                    >
-                        Hapus
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- BAGIAN 5: Ekspor Produksi & Mockup -->
-        <div class="space-y-4 pt-1">
-            <h3
-                class="text-xs font-black uppercase tracking-wider text-sky-800 flex items-center gap-2"
-            >
-                <PhDownloadSimple :size="16" weight="bold" />
-                <span>Ekspor Hasil Desain</span>
-            </h3>
-            <div class="grid grid-cols-2 gap-3.5 relative">
-                <!-- Overlay transparan penutup dropdown saat mengklik di luar area -->
-                <div
-                    v-if="activeDropdown"
-                    @click="activeDropdown = null"
-                    class="fixed inset-0 z-10 cursor-default bg-transparent"
-                ></div>
-
-                <!-- Kontainer Unduh Sablon -->
-                <div class="relative">
-                    <button
-                        @click.stop="toggleDropdown('print')"
-                        class="w-full py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200/80 text-slate-800 font-bold text-xs transition-all duration-300 flex flex-col items-center justify-center gap-1.5 border border-slate-200 hover:border-slate-300 shadow-sm active:scale-[0.98] group cursor-pointer"
-                    >
-                        <PhFloppyDisk
-                            class="text-slate-500 group-hover:text-slate-700 transition-colors"
-                            :size="20"
-                            weight="bold"
-                        />
-                        <div class="flex flex-col items-center">
-                            <span>Unduh Sablon</span>
-                            <span
-                                class="text-[8.5px] text-slate-500 font-medium mt-0.5"
-                                >Pilih sisi cetak</span
-                            >
-                        </div>
-                    </button>
-
-                    <!-- Dropdown Unduh Sablon -->
-                    <Transition name="fade">
-                        <div
-                            v-if="activeDropdown === 'print'"
-                            class="absolute bottom-full mb-2 left-0 right-0 bg-white/95 backdrop-blur-md border border-sky-100 rounded-2xl shadow-xl z-20 py-2 overflow-hidden flex flex-col text-left animate-in fade-in slide-in-from-bottom-2 duration-150"
-                        >
-                            <button
-                                @click="handlePrintExport('front')"
-                                class="px-4 py-2.5 text-[11px] font-bold text-slate-700 hover:bg-sky-50 hover:text-sky-600 transition-all text-left flex items-center gap-2 cursor-pointer"
-                            >
-                                <span
-                                    class="w-1.5 h-1.5 rounded-full bg-sky-500"
-                                ></span>
-                                Tampak Depan
-                            </button>
-                            <button
-                                @click="handlePrintExport('back')"
-                                class="px-4 py-2.5 text-[11px] font-bold text-slate-700 hover:bg-sky-50 hover:text-sky-600 transition-all text-left flex items-center gap-2 cursor-pointer"
-                            >
-                                <span
-                                    class="w-1.5 h-1.5 rounded-full bg-sky-500"
-                                ></span>
-                                Tampak Belakang
-                            </button>
-                            <div class="h-[1px] bg-sky-100/50 my-1"></div>
-                            <button
-                                @click="handlePrintExport('both')"
-                                class="px-4 py-2.5 text-[11px] font-extrabold text-sky-600 hover:bg-sky-600 hover:text-white transition-all text-left flex items-center gap-2 cursor-pointer"
-                            >
-                                <PhSparkle :size="12" weight="bold" />
-                                Depan + Belakang
-                            </button>
-                        </div>
-                    </Transition>
-                </div>
-
-                <!-- Kontainer Unduh Mockup -->
-                <div class="relative">
-                    <button
-                        @click.stop="toggleDropdown('mockup')"
-                        class="w-full py-3 px-4 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs transition-all duration-300 flex flex-col items-center justify-center gap-1.5 border border-sky-500/10 shadow-md shadow-sky-500/15 active:scale-[0.98] group cursor-pointer"
-                    >
-                        <PhImage
-                            class="text-sky-100 group-hover:text-white transition-colors"
-                            :size="20"
-                            weight="bold"
-                        />
-                        <div class="flex flex-col items-center">
-                            <span>Unduh Mockup</span>
-                            <span
-                                class="text-[8.5px] text-sky-100 font-medium mt-0.5"
-                                >Pilih sisi mockup</span
-                            >
-                        </div>
-                    </button>
-
-                    <!-- Dropdown Unduh Mockup -->
-                    <Transition name="fade">
-                        <div
-                            v-if="activeDropdown === 'mockup'"
-                            class="absolute bottom-full mb-2 left-0 right-0 bg-white/95 backdrop-blur-md border border-sky-100 rounded-2xl shadow-xl z-20 py-2 overflow-hidden flex flex-col text-left animate-in fade-in slide-in-from-bottom-2 duration-150"
-                        >
-                            <button
-                                @click="handleMockupExport('front')"
-                                class="px-4 py-2.5 text-[11px] font-bold text-slate-700 hover:bg-sky-50 hover:text-sky-600 transition-all text-left flex items-center gap-2 cursor-pointer"
-                            >
-                                <span
-                                    class="w-1.5 h-1.5 rounded-full bg-sky-500"
-                                ></span>
-                                Tampak Depan
-                            </button>
-                            <button
-                                @click="handleMockupExport('back')"
-                                class="px-4 py-2.5 text-[11px] font-bold text-slate-700 hover:bg-sky-50 hover:text-sky-600 transition-all text-left flex items-center gap-2 cursor-pointer"
-                            >
-                                <span
-                                    class="w-1.5 h-1.5 rounded-full bg-sky-500"
-                                ></span>
-                                Tampak Belakang
-                            </button>
-                            <div class="h-[1px] bg-sky-100/50 my-1"></div>
-                            <button
-                                @click="handleMockupExport('both')"
-                                class="px-4 py-2.5 text-[11px] font-extrabold text-sky-600 hover:bg-sky-600 hover:text-white transition-all text-left flex items-center gap-2 cursor-pointer"
-                            >
-                                <PhSparkle :size="12" weight="bold" />
-                                Depan + Belakang
-                            </button>
-                        </div>
-                    </Transition>
-                </div>
-            </div>
         </div>
 
         <!-- Modal Panduan Ukuran Kaos (Premium Pop-Up) -->
@@ -1403,20 +1885,20 @@ const onDrop = (e: DragEvent) => {
                 @click.self="showSizeGuide = false"
             >
                 <div
-                    class="bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-modal-pop text-slate-850 dark:text-slate-100"
+                    class="bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-modal-pop text-slate-850 dark:text-slate-100"
                 >
                     <!-- Modal Header -->
                     <div
-                        class="px-5 py-4 border-b border-sky-50 dark:border-slate-800 flex justify-between items-center bg-sky-50/50 dark:bg-slate-950/20"
+                        class="px-4 py-3 border-b border-sky-50 dark:border-slate-800 flex justify-between items-center bg-sky-50/50 dark:bg-slate-950/20"
                     >
                         <div class="flex items-center gap-2">
                             <PhRuler
-                                :size="16"
+                                :size="14"
                                 class="text-sky-600 dark:text-sky-400"
                                 weight="bold"
                             />
                             <h3
-                                class="font-extrabold text-[12px] tracking-tight text-slate-900 dark:text-white uppercase"
+                                class="font-extrabold text-[11px] tracking-tight text-slate-900 dark:text-white uppercase"
                             >
                                 Panduan Ukuran
                             </h3>
@@ -1425,113 +1907,89 @@ const onDrop = (e: DragEvent) => {
                             @click="showSizeGuide = false"
                             class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-all cursor-pointer bg-transparent border-0 outline-none"
                         >
-                            <PhX :size="14" weight="bold" />
+                            <PhX :size="12" weight="bold" />
                         </button>
                     </div>
 
                     <!-- Modal Body -->
-                    <div class="p-5 space-y-5">
-                        <!-- Tabel Ukuran -->
-                        <div
-                            class="overflow-hidden border border-sky-100 dark:border-slate-800 rounded-xl"
-                        >
-                            <table
-                                class="w-full text-[10px] text-left border-collapse"
-                            >
-                                <thead>
-                                    <tr
-                                        class="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-extrabold uppercase border-b border-sky-100 dark:border-slate-800"
-                                    >
-                                        <th class="px-3 py-2.5 text-center">
-                                            Ukuran
-                                        </th>
-                                        <th class="px-3 py-2.5 text-center">
-                                            Lebar (cm)
-                                        </th>
-                                        <th class="px-3 py-2.5 text-center">
-                                            Panjang (cm)
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr
-                                        v-for="(dims, size) in store.shirtSizes"
-                                        :key="size"
-                                        class="border-b border-sky-50/50 dark:border-slate-800 last:border-0 hover:bg-sky-50/20 dark:hover:bg-slate-850/30 transition-all"
-                                        :class="{
-                                            'bg-sky-50/40 dark:bg-sky-950/20 font-bold text-sky-600 dark:text-sky-400':
-                                                store.currentSize === size,
-                                        }"
-                                    >
-                                        <td
-                                            class="px-3 py-2 text-center font-black text-center"
-                                        >
-                                            {{ size }}
-                                        </td>
-                                        <td class="px-3 py-2 text-center">
-                                            {{ dims.width }} cm
-                                        </td>
-                                        <td class="px-3 py-2 text-center">
-                                            {{ dims.length }} cm
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Infografis Size Chart -->
-                        <div
-                            class="flex items-center justify-center p-2.5 bg-slate-50 dark:bg-slate-950/45 rounded-xl border border-sky-100/50 dark:border-slate-800/85"
-                        >
-                            <img
-                                :src="sizeChartImg"
-                                alt="Ilustrasi Panduan Ukuran"
-                                class="max-w-full max-h-[200px] object-contain rounded-lg filter dark:brightness-95"
-                            />
-                        </div>
-
-                        <!-- Ilustrasi Cara Mengukur -->
-                        <div
-                            class="bg-sky-50/50 dark:bg-slate-950/30 border border-sky-100/50 dark:border-slate-800 p-3.5 rounded-xl flex gap-2.5"
-                        >
+                    <div class="p-4 space-y-3">
+                        <!-- Grid Layout: Tabel (Kiri) & Gambar Chart (Kanan) -->
+                        <div class="grid grid-cols-2 gap-3 items-center">
+                            <!-- Tabel Ukuran -->
                             <div
-                                class="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-lg bg-sky-600/10 text-sky-600 dark:text-sky-400"
+                                class="overflow-hidden border border-sky-100 dark:border-slate-800 rounded-xl"
                             >
-                                <PhTShirt :size="14" weight="bold" />
+                                <table
+                                    class="w-full text-[9.5px] text-left border-collapse"
+                                >
+                                    <thead>
+                                        <tr
+                                            class="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-extrabold uppercase border-b border-sky-100 dark:border-slate-800"
+                                        >
+                                            <th class="px-2 py-1.5 text-center">Size</th>
+                                            <th class="px-2 py-1.5 text-center">L (cm)</th>
+                                            <th class="px-2 py-1.5 text-center">P (cm)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr
+                                            v-for="(dims, size) in store.shirtSizes"
+                                            :key="size"
+                                            class="border-b border-sky-50/50 dark:border-slate-800 last:border-0 hover:bg-sky-50/20 dark:hover:bg-slate-850/30 transition-all"
+                                            :class="{
+                                                'bg-sky-50/40 dark:bg-sky-950/20 font-bold text-sky-600 dark:text-sky-400':
+                                                    store.currentSize === size,
+                                            }"
+                                        >
+                                            <td class="px-2 py-1 text-center font-black">
+                                                {{ size }}
+                                            </td>
+                                            <td class="px-2 py-1 text-center">
+                                                {{ dims.width }}
+                                            </td>
+                                            <td class="px-2 py-1 text-center">
+                                                {{ dims.length }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
-                            <div class="space-y-1">
-                                <h4
-                                    class="text-[10px] font-extrabold text-slate-850 dark:text-white uppercase tracking-wider"
-                                >
-                                    Cara Mengukur Kaos
-                                </h4>
-                                <p
-                                    class="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed"
-                                >
-                                    * <strong>Lebar:</strong> Ukur secara
-                                    mendatar dari jahitan ketiak kiri ke ketiak
-                                    kanan.<br />
-                                    * <strong>Panjang:</strong> Ukur secara
-                                    tegak lurus dari titik bahu tertinggi hingga
-                                    ujung bawah kaos.<br />
-                                    *
-                                    <span
-                                        class="text-amber-600 dark:text-amber-400 font-bold"
-                                        >Toleransi Ukuran:</span
-                                    >
-                                    Terdapat batas toleransi ±1 s/d 2 cm.
-                                </p>
+
+                            <!-- Gambar Size Chart -->
+                            <div
+                                class="flex items-center justify-center p-1.5 bg-slate-50 dark:bg-slate-950/45 rounded-xl border border-sky-100/50 dark:border-slate-800/85 h-full min-h-[140px]"
+                            >
+                                <img
+                                    :src="sizeChartImg"
+                                    alt="Size Chart"
+                                    class="max-w-full max-h-[130px] object-contain rounded-lg filter dark:brightness-95"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Keterangan Singkat Cara Mengukur & Toleransi -->
+                        <div
+                            class="bg-sky-50/30 dark:bg-slate-950/20 border border-sky-100/50 dark:border-slate-800/80 p-2.5 rounded-xl text-[8.5px] text-slate-500 dark:text-slate-400 leading-normal space-y-1"
+                        >
+                            <div>
+                                * <strong>Lebar (L):</strong> Jahitan ketiak kiri ke ketiak kanan.
+                            </div>
+                            <div>
+                                * <strong>Panjang (P):</strong> Bahu tertinggi hingga ujung bawah kaos.
+                            </div>
+                            <div class="text-amber-600 dark:text-amber-400 font-bold">
+                                * Toleransi penyusutan/jahitan ±1 s/d 2 cm.
                             </div>
                         </div>
                     </div>
 
                     <!-- Modal Footer -->
                     <div
-                        class="px-5 py-3 border-t border-sky-50 dark:border-slate-800 flex justify-end bg-slate-50/50 dark:bg-slate-950/10"
+                        class="px-4 py-2.5 border-t border-sky-50 dark:border-slate-800 flex justify-end bg-slate-50/50 dark:bg-slate-950/10"
                     >
                         <button
                             @click="showSizeGuide = false"
-                            class="px-4 py-2 text-[10px] font-extrabold bg-sky-600 hover:bg-sky-500 text-white rounded-xl shadow-md transition-all duration-300 hover:scale-103 cursor-pointer border-0 outline-none"
+                            class="px-3.5 py-1.5 text-[9.5px] font-extrabold bg-sky-600 hover:bg-sky-500 text-white rounded-xl shadow transition-all duration-300 hover:scale-103 cursor-pointer border-0 outline-none"
                         >
                             Tutup
                         </button>
