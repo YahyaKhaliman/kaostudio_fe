@@ -5,6 +5,18 @@ export type ViewType = 'front' | 'back' | 'both'
 export type CanvasViewType = 'front' | 'back'
 export type ShirtType = 'tshirt' | 'longTshirt' | 'polo'
 
+// Helper generator UUID fallback untuk mengatasi lingkungan non-HTTPS di production
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
 export const useConfiguratorStore = defineStore('configurator', () => {
   const currentView = ref<ViewType>('front')
   const shirtColor = ref<string>('#ffffff') // default white
@@ -60,7 +72,7 @@ export const useConfiguratorStore = defineStore('configurator', () => {
       uploadedImages.value.shift()
     }
     uploadedImages.value.push({
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name,
       dataUrl,
       size,
