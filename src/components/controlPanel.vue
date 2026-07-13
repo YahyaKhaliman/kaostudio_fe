@@ -672,7 +672,7 @@ const onDrop = (e: DragEvent) => {
                                                 </svg>
                                             </div>
                                             <span class="truncate text-[10px] font-extrabold uppercase tracking-wide">
-                                                {{ store.currentShirtType === 'tshirt' ? 'T-Shirt' : store.currentShirtType === 'longTshirt' ? 'Lengan Pjg' : 'Polo' }}
+                                                {{ store.currentShirtType === 'tshirt' ? 'Kaos Polos Pendek' : store.currentShirtType === 'longTshirt' ? 'Kaos Polo Panjang' : 'Polo' }}
                                             </span>
                                         </div>
                                         <PhCaretDown :size="10" weight="bold" class="text-slate-400 dark:text-slate-500 transition-transform duration-300 flex-shrink-0" :class="{ 'transform rotate-180': isModelDropdownOpen }" />
@@ -692,7 +692,7 @@ const onDrop = (e: DragEvent) => {
                                                         <path d="M9 4H6L3 9h3v11h12V9h3l-3-5h-3" />
                                                     </svg>
                                                     <div class="min-w-0">
-                                                        <div class="font-extrabold uppercase text-[9px] truncate">T-Shirt</div>
+                                                        <div class="font-extrabold uppercase text-[9px] truncate">Kaos Polos Pendek</div>
                                                         <div class="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium truncate">Oblong Standar</div>
                                                     </div>
                                                 </div>
@@ -709,7 +709,7 @@ const onDrop = (e: DragEvent) => {
                                                         <path d="M9 4H6L2 14h2.5l2-6v12h11V8l2 6h2.5l-4-10h-3" />
                                                     </svg>
                                                     <div class="min-w-0">
-                                                        <div class="font-extrabold uppercase text-[9px] truncate">Lengan Pjg</div>
+                                                        <div class="font-extrabold uppercase text-[9px] truncate">Kaos Polos Panjang</div>
                                                         <div class="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium truncate">Lengan Panjang</div>
                                                     </div>
                                                 </div>
@@ -729,7 +729,7 @@ const onDrop = (e: DragEvent) => {
                                                         <circle cx="12" cy="10.5" r="0.5" fill="currentColor" />
                                                     </svg>
                                                     <div class="min-w-0">
-                                                        <div class="font-extrabold uppercase text-[9px] truncate">Kaos Polo</div>
+                                                        <div class="font-extrabold uppercase text-[9px] truncate">Kaos Polos</div>
                                                         <div class="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium truncate">Kerah / Formal</div>
                                                     </div>
                                                 </div>
