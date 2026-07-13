@@ -93,6 +93,10 @@ const handleUpdateFontSize = (size: number) => {
     canvasRef.value?.updateSelectedFontSize(size);
 };
 
+const handleUpdateImageSize = (widthCm: number, heightCm: number) => {
+    canvasRef.value?.updateSelectedImageSize(widthCm, heightCm);
+};
+
 // Menangani ekspor gambar mockup lengkap
 const handleExportMockup = async (view: "front" | "back" | "both") => {
     if (!canvasRef.value) return;
@@ -247,6 +251,7 @@ const handleDeselectObject = () => {
                     @update-color="handleUpdateColor"
                     @update-font="handleUpdateFont"
                     @update-font-size="handleUpdateFontSize"
+                    @update-image-size="handleUpdateImageSize"
                     @deselect-object="handleDeselectObject"
                 />
             </div>

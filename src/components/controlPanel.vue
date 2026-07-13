@@ -23,6 +23,7 @@ import {
 } from "@phosphor-icons/vue";
 
 import { compressImage, formatBytes } from "../utils/imageCompressor";
+import { presetColors, companyColors, type ColorItem } from "../utils/colors";
 import sizeChartImg from "../assets/images/size_chart.png";
 
 const props = defineProps<{
@@ -41,6 +42,7 @@ const emit = defineEmits<{
     (e: "update-color", color: string): void;
     (e: "update-font", font: string): void;
     (e: "update-font-size", size: number): void;
+    (e: "update-image-size", widthCm: number, heightCm: number): void;
     (e: "deselect-object"): void;
 }>();
 
@@ -49,10 +51,19 @@ const showSizeGuide = ref(false);
 
 // State Accordion Panel Kontrol (Membuka panel secara mandiri dan bersamaan)
 const isShirtOpen = ref(true);
+const isShirtFullyOpen = ref(true);
 const isTextOpen = ref(false);
 const isUploadOpen = ref(false);
 const isBackdropOpen = ref(false);
 const isExportOpen = ref(false);
+const isExportFullyOpen = ref(false);
+
+watch(isExportOpen, (isOpen) => {
+    if (!isOpen) {
+        isPrintDropdownOpen.value = false;
+        isMockupDropdownOpen.value = false;
+    }
+});
 
 // State Dropdown Ekspor
 const isPrintDropdownOpen = ref(false);
@@ -84,247 +95,35 @@ const textFont = ref("Inter");
 const fontSize = ref(24);
 const uploadError = ref("");
 
-// Preset warna kaos terlaris perusahaan (akses cepat)
-const presetColors = [
-    { name: "PUTIH", hex: "#ffffff" },
-    { name: "HITAM", hex: "#000000" },
-    { name: "ABU MISTY", hex: "#dcdcdc" },
-    { name: "NAVY/DONGKER", hex: "#0f172a" },
-    { name: "MERAH", hex: "#e60012" },
-    { name: "BENHUR", hex: "#1c4c96" },
-    { name: "TURKIS", hex: "#00a6b4" },
-    { name: "KUNING", hex: "#ffff00" },
-];
-
-// Daftar lengkap warna yang tersedia di perusahaan
-const companyColors = [
-    { name: "WOODROSE", hex: "#c39c9f" },
-    { name: "BENHUR", hex: "#1c4c96" },
-    { name: "UNGU VARIASI PUTIH", hex: "#7a2f8f" },
-    { name: "UNGU VARIASI ABU", hex: "#6c337a" },
-    { name: "UNGU TUA", hex: "#4a154b" },
-    { name: "UNGU PASTEL", hex: "#b39ddb" },
-    { name: "UNGU MUDA", hex: "#dfb2f4" },
-    { name: "UNGU", hex: "#800080" },
-    { name: "TWOTON", hex: "#5c6b73" },
-    { name: "TURKISH TUA", hex: "#005d7f" },
-    { name: "TURKISH MUDA", hex: "#00a8cc" },
-    { name: "TURKIS-BATA", hex: "#008290" },
-    { name: "TURKIS SEDANG", hex: "#008ba3" },
-    { name: "TURKIS HITAM", hex: "#003f4f" },
-    { name: "TURKIS", hex: "#00a6b4" },
-    { name: "TOSCA-NAVY", hex: "#005a70" },
-    { name: "TOSCA TUA", hex: "#005c53" },
-    { name: "TOSCA SEDANG", hex: "#008080" },
-    { name: "TOSCA MUDA", hex: "#b2ebf2" },
-    { name: "TOSCA", hex: "#008080" },
-    { name: "TOFFEE", hex: "#8b5a2b" },
-    { name: "TERACOTA", hex: "#c35237" },
-    { name: "STONE GREY", hex: "#808a8a" },
-    { name: "STONE GREEN", hex: "#506c64" },
-    { name: "STILL BLUE", hex: "#5f859b" },
-    { name: "SKY BLUE", hex: "#87ceeb" },
-    { name: "SEA GREEN", hex: "#2e8b57" },
-    { name: "SALEM", hex: "#f89b7d" },
-    { name: "SAGA", hex: "#488b49" },
-    { name: "RUBY RED", hex: "#9b111e" },
-    { name: "ROSE", hex: "#ff007f" },
-    { name: "RED", hex: "#ff0000" },
-    { name: "PUTIH-WOODROSE", hex: "#f9f5f5" },
-    { name: "PUTIH-TURKIS", hex: "#f0fafb" },
-    { name: "PUTIH-TOSCA", hex: "#f0fafa" },
-    { name: "PUTIH-PINK", hex: "#fff5f6" },
-    { name: "PUTIH-ORANGE TOSCA", hex: "#fdf8f4" },
-    { name: "PUTIH-ORANGE", hex: "#fffcf9" },
-    { name: "PUTIH-NAVY", hex: "#f4f6fa" },
-    { name: "PUTIH-MARUN", hex: "#fdf4f5" },
-    { name: "PUTIH-HITAM", hex: "#fbfbfb" },
-    { name: "PUTIH-HIJAU", hex: "#f5fbf6" },
-    { name: "PUTIH-COKLAT", hex: "#fbf9f6" },
-    { name: "PUTIH-ABU", hex: "#fafafa" },
-    { name: "PUTIH VARIASI MERAH", hex: "#fff9f9" },
-    { name: "PUTIH VARIASI BENHUR", hex: "#f9fbfd" },
-    { name: "PUTIH VAR MRN-BENHUR", hex: "#fbfafc" },
-    { name: "PUTIH TULANG", hex: "#fbf6eb" },
-    { name: "PUTIH", hex: "#ffffff" },
-    { name: "PINK SEDANG", hex: "#ff69b4" },
-    { name: "PINK MUDA", hex: "#ffb6c1" },
-    { name: "PINK FANTA", hex: "#f50057" },
-    { name: "PINK DUSTY", hex: "#dcaeac" },
-    { name: "PINK DOVE", hex: "#e0b0b0" },
-    { name: "PINK", hex: "#ffc0cb" },
-    { name: "PICH", hex: "#fcd6b8" },
-    { name: "PALE PEACH", hex: "#ffdfd3" },
-    { name: "ORANGE-PUTIH", hex: "#ffa500" },
-    { name: "ORANGE-KHEKY", hex: "#e59400" },
-    { name: "ORANGE-ABU", hex: "#f07f28" },
-    { name: "ORANGE BATA-HITAM", hex: "#b33c1b" },
-    { name: "ORANGE BATA", hex: "#cc4e2b" },
-    { name: "ORANGE", hex: "#ff8c00" },
-    { name: "OLIVE GREEN", hex: "#bab86c" },
-    { name: "OLD SEAGREEN", hex: "#1b4d3e" },
-    { name: "OLD GRAPE NECTAR", hex: "#5c2e43" },
-    { name: "OLD DEEPBLUE", hex: "#0f2b46" },
-    { name: "OLD ABU MISTY", hex: "#a8a8a8" },
-    { name: "OFFWHITE", hex: "#faf9f6" },
-    { name: "OCEAN BLUE", hex: "#006994" },
-    { name: "NAVY/DONGKER", hex: "#0f172a" },
-    { name: "NAVY-PUTIH", hex: "#131e35" },
-    { name: "NAVY-KUNYIT", hex: "#1c2840" },
-    { name: "NAVY-DUSTY", hex: "#232e42" },
-    { name: "NAVY VARIASI ABU", hex: "#283446" },
-    { name: "NAVY ALTRA", hex: "#0a1224" },
-    { name: "MUSTARD", hex: "#e1ad01" },
-    { name: "MOTIF PUTIH", hex: "#fafafa" },
-    { name: "MOTIF NAVY", hex: "#1e293b" },
-    { name: "MOTIF HITAM", hex: "#111827" },
-    { name: "MOCCA", hex: "#a38069" },
-    { name: "MISTY VARIASI MARUN", hex: "#b5a4a9" },
-    { name: "MISTY VARIASI HITAM", hex: "#a4a4a4" },
-    { name: "MINERAL-STONEGREY", hex: "#708090" },
-    { name: "MINERAL-SALUR", hex: "#657c8a" },
-    { name: "MINERAL BLUE", hex: "#3f5e73" },
-    { name: "MINERAL", hex: "#5a7684" },
-    { name: "MILO", hex: "#826251" },
-    { name: "MERAH-HITAM", hex: "#b81d24" },
-    { name: "MERAH-ABU", hex: "#c92630" },
-    { name: "MERAH CABE-PUTIH", hex: "#e52a36" },
-    { name: "MERAH CABE-NAVY", hex: "#cc111a" },
-    { name: "MERAH CABE", hex: "#e60012" },
-    { name: "MERAH BENDERA", hex: "#ff0000" },
-    { name: "MERAH BATA VAR HITAM", hex: "#b33620" },
-    { name: "MERAH BATA", hex: "#c24b38" },
-    { name: "MERAH", hex: "#e60012" },
-    { name: "MEDIUM GREY", hex: "#808080" },
-    { name: "MARUN-PUTIH", hex: "#6a1a24" },
-    { name: "MARUN-KHEKY", hex: "#731f2b" },
-    { name: "MARUN-HITAM", hex: "#5a121b" },
-    { name: "MARUN KERAH", hex: "#7a1c28" },
-    { name: "MARUN", hex: "#800000" },
-    { name: "MAGENTA", hex: "#ff00ff" },
-    { name: "LUMUT", hex: "#4a5d4e" },
-    { name: "LIGHT GREY", hex: "#d3d3d3" },
-    { name: "LIGHT BROWN", hex: "#b5651d" },
-    { name: "LAVENDER-LILAC", hex: "#d8b2d8" },
-    { name: "LAVENDER", hex: "#e6e6fa" },
-    { name: "LACOST CVC LIST", hex: "#334e68" },
-    { name: "KUNING VARIASI NAVY", hex: "#f0c808" },
-    { name: "KUNING VARIASI HIJAU", hex: "#ebd010" },
-    { name: "KUNING MUSTARD", hex: "#e1ad01" },
-    { name: "KUNING MAS-ALMOND", hex: "#f0d368" },
-    { name: "KUNING MAS", hex: "#ffd700" },
-    { name: "KUNING KUNYIT", hex: "#e3a813" },
-    { name: "KUNING EMAS-HITAM", hex: "#cfac17" },
-    { name: "KUNING EMAS ALTRA", hex: "#d4af37" },
-    { name: "KUNING EMAS", hex: "#ffd700" },
-    { name: "KUNING", hex: "#ffff00" },
-    { name: "KOTAK", hex: "#7f8c8d" },
-    { name: "KHEKY", hex: "#c3b091" },
-    { name: "KENARI-TURKIS SEDANG", hex: "#eae31a" },
-    { name: "KENARI PUTIH", hex: "#fdfde2" },
-    { name: "KENARI", hex: "#f3e5ab" },
-    { name: "JADE GREEN", hex: "#00a86b" },
-    { name: "IVORY", hex: "#fffff0" },
-    { name: "HITAM-TERACOTA", hex: "#1a0d0d" },
-    { name: "HITAM-PUTIH", hex: "#1a1a1a" },
-    { name: "HITAM-MINERAL", hex: "#121212" },
-    { name: "HITAM-MARUN", hex: "#180a0a" },
-    { name: "HITAM-HIJAU BOTOL", hex: "#0a1a0f" },
-    { name: "HITAM KERAH", hex: "#141414" },
-    { name: "HITAM", hex: "#000000" },
-    { name: "HIJAU-BENHUR", hex: "#1b6e4e" },
-    { name: "HIJAU VARIASI BENHUR", hex: "#227a58" },
-    { name: "HIJAU TUA ALTRA", hex: "#1b4c3e" },
-    { name: "HIJAU STABILO", hex: "#00ff00" },
-    { name: "HIJAU SAMPURNA", hex: "#2ecc71" },
-    { name: "HIJAU SAGE", hex: "#9caf88" },
-    { name: "HIJAU PUPUS", hex: "#98fb98" },
-    { name: "HIJAU MINT", hex: "#3eb489" },
-    { name: "HIJAU HITAM", hex: "#1e3328" },
-    { name: "HIJAU FUJI", hex: "#27ae60" },
-    { name: "HIJAU BOTOL-KUNYIT", hex: "#12301f" },
-    { name: "HIJAU BOTOL-ABU", hex: "#183c27" },
-    { name: "HIJAU BOTOL", hex: "#004b23" },
-    { name: "HIJAU BABY", hex: "#98fb98" },
-    { name: "HIJAU", hex: "#008000" },
-    { name: "GREENTEA", hex: "#adff2f" },
-    { name: "GRAPENECTAR-ABU", hex: "#6a4c58" },
-    { name: "GRAPE NECTAR", hex: "#5c3a47" },
-    { name: "GOLD", hex: "#ffd700" },
-    { name: "FUNKY GREEN", hex: "#39ff14" },
-    { name: "ERMINE", hex: "#c0c0c0" },
-    { name: "ENSIGHT BLUE", hex: "#2a52be" },
-    { name: "DUTCH BLUE-ABU MUDA", hex: "#3b5a9a" },
-    { name: "DUTCH BLUE", hex: "#4169e1" },
-    { name: "DUSTY ROSE", hex: "#cca7a2" },
-    { name: "DUSTY BLUE", hex: "#8c9fa8" },
-    { name: "DUSTY", hex: "#bfa3a3" },
-    { name: "DORENG", hex: "#556b2f" },
-    { name: "DONGKER ALTRA", hex: "#0a1128" },
-    { name: "DIMGRAY", hex: "#696969" },
-    { name: "DIJON", hex: "#c4b270" },
-    { name: "DESIGN MUNDU", hex: "#34495e" },
-    { name: "DENIM BLUE", hex: "#224375" },
-    { name: "DENIM", hex: "#1560bd" },
-    { name: "DEEP BLUE", hex: "#0047ab" },
-    { name: "DARK WINE", hex: "#58111a" },
-    { name: "DARK MUSTARD", hex: "#a88200" },
-    { name: "DARK KHEKY", hex: "#8b7e66" },
-    { name: "DARK GREY", hex: "#a9a9a9" },
-    { name: "DARK GREEN", hex: "#006400" },
-    { name: "CREAM", hex: "#fffdd0" },
-    { name: "CRACKERY", hex: "#d2b48c" },
-    { name: "COLORFULL", hex: "#e67e22" },
-    { name: "COKSU", hex: "#dfc9b1" },
-    { name: "COKLAT-COKLAT TUA", hex: "#5c4033" },
-    { name: "COKLAT POLISI", hex: "#654321" },
-    { name: "COKLAT MUDA", hex: "#a0522d" },
-    { name: "COKLAT", hex: "#8b4513" },
-    { name: "CINNAMON", hex: "#d2691e" },
-    { name: "CHOCOMILK", hex: "#987654" },
-    { name: "CARAMEL", hex: "#c68e17" },
-    { name: "CAPPUCINO", hex: "#4b382a" },
-    { name: "CACTUS GREEN", hex: "#5b8266" },
-    { name: "BUTTER", hex: "#f3e5ab" },
-    { name: "BRONZE", hex: "#cd7f32" },
-    { name: "BLUSH RED", hex: "#e55b6c" },
-    { name: "BLUE MIRAGE", hex: "#5c6b73" },
-    { name: "BLACKSAND", hex: "#363636" },
-    { name: "BIRU-KUNING", hex: "#1a4c8c" },
-    { name: "BIRU-HITAM", hex: "#0f2e59" },
-    { name: "BIRU TUA", hex: "#00008b" },
-    { name: "BIRU MUDA", hex: "#add8e6" },
-    { name: "BIRU CYAN", hex: "#00ffff" },
-    { name: "BIRU ALTRA", hex: "#005080" },
-    { name: "BIRU", hex: "#0000ff" },
-    { name: "BENHUR KERAH", hex: "#245fa7" },
-    { name: "BEIGE", hex: "#f5f5dc" },
-    { name: "BATA-ABU", hex: "#c35f47" },
-    { name: "BABY PINK", hex: "#ffc0cb" },
-    { name: "ATLANTIC SEA", hex: "#006994" },
-    { name: "ARMY-OLIVE GREEN", hex: "#4b5320" },
-    { name: "ARMY", hex: "#4b5320" },
-    { name: "ARABIAN SPACE", hex: "#232230" },
-    { name: "AQUA-TURKIS SEDANG", hex: "#00ffff" },
-    { name: "AQUA HAZE", hex: "#f4f6f7" },
-    { name: "ALMOND-ORANGEBATA", hex: "#e6b89c" },
-    { name: "ALMOND", hex: "#eed9c4" },
-    { name: "ABU-TOSCA", hex: "#7f8c8d" },
-    { name: "ABU-NAVY", hex: "#4e5d6c" },
-    { name: "ABU-HITAM", hex: "#404040" },
-    { name: "ABU TUA", hex: "#a9a9a9" },
-    { name: "ABU SEDANG", hex: "#bebebe" },
-    { name: "ABU MUDA", hex: "#d3d3d3" },
-    { name: "ABU MSTY-ORANGE BATA", hex: "#b3a096" },
-    { name: "ABU MISTY", hex: "#dcdcdc" },
-    { name: "ABU LIST PUTIH", hex: "#e2e2e2" },
-    { name: "ABU KERAH", hex: "#bebebe" },
-    { name: "ABU", hex: "#808080" },
-];
-
 // State Dropdown Pencarian Warna
 const searchQuery = ref("");
 const isColorDropdownOpen = ref(false);
+const originalColor = ref<string | null>(null);
+const hoveredColorName = ref("");
+
+const previewColor = (hex: string, name: string = "") => {
+    if (originalColor.value === null) {
+        originalColor.value = store.shirtColor;
+    }
+    store.shirtColor = hex;
+    if (name) {
+        hoveredColorName.value = name;
+    }
+};
+
+const restoreColor = () => {
+    if (originalColor.value !== null) {
+        store.shirtColor = originalColor.value;
+        originalColor.value = null;
+    }
+    hoveredColorName.value = "";
+};
+
+const commitColor = (hex: string) => {
+    store.shirtColor = hex;
+    originalColor.value = hex;
+    store.saveToLocalStorage();
+};
 
 const filteredColors = computed(() => {
     const sorted = [...companyColors].sort((a, b) =>
@@ -338,16 +137,30 @@ const filteredColors = computed(() => {
 
 const activeColorName = computed(() => {
     const matched = companyColors.find(
-        (c) => c.hex.toLowerCase() === store.shirtColor.toLowerCase(),
+        (c: ColorItem) => c.hex.toLowerCase() === store.shirtColor.toLowerCase(),
     );
     return matched ? matched.name : "PILIH WARNA PRODUKSI";
 });
 
 const selectCompanyColor = (color: { name: string; hex: string }) => {
-    store.shirtColor = color.hex;
-    isColorDropdownOpen.value = false;
-    searchQuery.value = "";
+    commitColor(color.hex);
 };
+
+// Reset searchQuery ketika dropdown ditutup
+watch(isColorDropdownOpen, (isOpen) => {
+    if (!isOpen) {
+        searchQuery.value = "";
+    }
+});
+
+// Tutup otomatis semua dropdown kaos jika accordion utama ditutup
+watch(isShirtOpen, (isOpen) => {
+    if (!isOpen) {
+        isModelDropdownOpen.value = false;
+        isViewDropdownOpen.value = false;
+        isColorDropdownOpen.value = false;
+    }
+});
 
 // Daftar Font Google
 const fontList = [
@@ -509,6 +322,10 @@ const onDrop = (e: DragEvent) => {
         }
     }
 };
+
+const applyImageTemplateSize = (widthCm: number, heightCm: number) => {
+    emit("update-image-size", widthCm, heightCm);
+};
 </script>
 
 <template>
@@ -567,6 +384,42 @@ const onDrop = (e: DragEvent) => {
                         <span>Hapus</span>
                     </button>
                 </div>
+
+                <!-- Pengaturan Ukuran Template Gambar (Hanya muncul jika objek terpilih berupa Gambar) -->
+                <div
+                    v-if="selectedObject.type === 'image'"
+                    class="space-y-2 pt-3 border-t border-sky-100/50 dark:border-slate-800/80"
+                >
+                    <label
+                        class="block text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider pl-1"
+                    >
+                        Ukuran Cetak Sablon (Template):
+                    </label>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button
+                            v-for="tpl in [
+                                { name: 'A3', w: 29.7, h: 42.0 },
+                                { name: 'A4', w: 21.0, h: 29.7 },
+                                { name: 'A5', w: 14.8, h: 21.0 },
+                                { name: 'A6', w: 10.5, h: 14.8 },
+                                { name: 'Logo 8x8', w: 8.0, h: 8.0 },
+                                { name: 'Logo 10x10', w: 10.0, h: 10.0 },
+                            ]"
+                            :key="tpl.name"
+                            @click="applyImageTemplateSize(tpl.w, tpl.h)"
+                            class="py-1.5 px-1 text-[8.5px] font-extrabold uppercase rounded-lg border border-sky-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-sky-300 dark:hover:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-850 text-slate-750 dark:text-slate-350 transition-all hover:scale-102 active:scale-98 cursor-pointer text-center"
+                            type="button"
+                            :title="`Skalakan gambar proporsional ke ukuran maks ${tpl.w} x ${tpl.h} cm`"
+                        >
+                            {{ tpl.name }}
+                        </button>
+                    </div>
+                    <span
+                        class="block text-[7.5px] text-slate-400 dark:text-slate-500 italic pl-1 leading-normal"
+                    >
+                        * Skala gambar akan disesuaikan secara proporsional sesuai rasio asli (bebas distorsi).
+                    </span>
+                </div>
             </div>
         </Transition>
 
@@ -574,7 +427,8 @@ const onDrop = (e: DragEvent) => {
         <div class="space-y-3">
             <!-- 1. Konfigurasi Kaos Accordion -->
             <div
-                class="border border-sky-100/60 dark:border-slate-800/80 rounded-2xl overflow-hidden transition-all duration-300 bg-white/40 dark:bg-slate-900/10"
+                class="border border-sky-100/60 dark:border-slate-800/80 rounded-2xl transition-all duration-300 bg-white/40 dark:bg-slate-900/10"
+                :class="{ 'overflow-hidden': !isShirtFullyOpen }"
             >
                 <button
                     @click="isShirtOpen = !isShirtOpen"
@@ -635,6 +489,8 @@ const onDrop = (e: DragEvent) => {
                     leave-active-class="transition-all duration-250 ease-in"
                     leave-from-class="max-h-[800px] opacity-100 transform translate-y-0"
                     leave-to-class="max-h-0 opacity-0 transform -translate-y-2"
+                    @after-enter="isShirtFullyOpen = true"
+                    @before-leave="isShirtFullyOpen = false"
                 >
                     <div
                         v-show="isShirtOpen"
@@ -649,7 +505,7 @@ const onDrop = (e: DragEvent) => {
                                 <label class="block text-[9.5px] uppercase font-black text-slate-455 dark:text-slate-500 tracking-wider pl-1">Model Kaos</label>
                                 <div class="relative w-full">
                                     <button
-                                        @click.stop="isModelDropdownOpen = !isModelDropdownOpen; isViewDropdownOpen = false"
+                                        @click.stop="isModelDropdownOpen = !isModelDropdownOpen; isViewDropdownOpen = false; isColorDropdownOpen = false"
                                         class="w-full flex items-center justify-between py-2 px-2.5 rounded-xl border border-sky-100/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 hover:bg-slate-100/60 dark:hover:bg-slate-900/50 transition-all text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer outline-none active:scale-[0.98] relative z-25"
                                         type="button"
                                     >
@@ -745,7 +601,7 @@ const onDrop = (e: DragEvent) => {
                                 <label class="block text-[9.5px] uppercase font-black text-slate-455 dark:text-slate-500 tracking-wider pl-1">Sisi Tampilan</label>
                                 <div class="relative w-full">
                                     <button
-                                        @click.stop="isViewDropdownOpen = !isViewDropdownOpen; isModelDropdownOpen = false"
+                                        @click.stop="isViewDropdownOpen = !isViewDropdownOpen; isModelDropdownOpen = false; isColorDropdownOpen = false"
                                         class="w-full flex items-center justify-between py-2 px-2.5 rounded-xl border border-sky-100/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 hover:bg-slate-100/60 dark:hover:bg-slate-900/50 transition-all text-xs font-bold text-slate-700 dark:text-slate-355 cursor-pointer outline-none active:scale-[0.98] relative z-25"
                                         type="button"
                                     >
@@ -904,11 +760,18 @@ const onDrop = (e: DragEvent) => {
                                 class="block text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wide"
                                 >Pilih Warna Kaos:</label
                             >
+                            <div class="flex flex-col gap-0.5">
+                                <span class="text-[9px] text-blue-400 dark:text-slate-500 italic font-medium">
+                                    *Warna hanya contoh, tidak seakurat warna kain aslinya
+                                </span>
+                            </div>
                             <div class="flex flex-wrap gap-2 items-center">
                                 <button
                                     v-for="color in presetColors"
                                     :key="color.hex"
-                                    @click="store.shirtColor = color.hex"
+                                    @click="commitColor(color.hex)"
+                                    @mouseenter="previewColor(color.hex, color.name)"
+                                    @mouseleave="restoreColor"
                                     :title="color.name"
                                     :class="[
                                         'w-7 h-7 rounded-full border border-slate-200 dark:border-slate-800 transition-all duration-300 relative hover:scale-115 focus:outline-none flex items-center justify-center cursor-pointer',
@@ -944,9 +807,11 @@ const onDrop = (e: DragEvent) => {
                                     class="fixed inset-0 z-10 bg-transparent"
                                 ></div>
                                 <button
-                                    @click="
+                                    @click.stop="
                                         isColorDropdownOpen =
-                                            !isColorDropdownOpen
+                                            !isColorDropdownOpen;
+                                        isModelDropdownOpen = false;
+                                        isViewDropdownOpen = false;
                                     "
                                     class="w-full flex items-center justify-between py-2 px-3.5 rounded-xl border border-sky-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100/80 dark:hover:bg-slate-900/60 transition-all text-xs font-bold text-slate-700 dark:text-slate-300 relative z-20 cursor-pointer"
                                     type="button"
@@ -974,55 +839,58 @@ const onDrop = (e: DragEvent) => {
                                 <Transition name="fade">
                                     <div
                                         v-if="isColorDropdownOpen"
-                                        class="absolute top-full mt-1.5 left-0 right-0 max-h-56 overflow-y-auto bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 rounded-xl shadow-xl z-20 p-2 space-y-2 animate-in fade-in slide-in-from-top-2 duration-150"
+                                        class="absolute bottom-full mb-1.5 left-0 right-0 bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 rounded-2xl shadow-2xl z-20 p-3 space-y-2.5 animate-in fade-in slide-in-from-bottom-2 duration-150 overflow-hidden flex flex-col"
                                     >
                                         <input
                                             v-model="searchQuery"
                                             type="text"
-                                            placeholder="Cari warna perusahaan..."
+                                            placeholder="Cari warna lainnya..."
                                             class="w-full py-1.5 px-3.5 text-[11px] font-bold border border-sky-100 dark:border-slate-850 rounded-lg focus:outline-none focus:ring-1 focus:ring-sky-500 bg-slate-50/50 dark:bg-slate-950/50 text-slate-800 dark:text-slate-200"
                                             @click.stop
                                         />
+
+                                        <!-- Keterangan informatif daftar warna -->
+                                        <div class="px-1.5 py-0.5 text-[9px] text-slate-400 dark:text-slate-500 font-medium flex justify-between items-center border-b border-slate-100/80 dark:border-slate-800/80 pb-1.5 min-h-[22px]">
+                                            <span>Tersedia {{ filteredColors.length }} pilihan</span>
+                                            <span v-if="hoveredColorName" class="text-sky-600 dark:text-sky-400 font-extrabold uppercase text-[8.5px] bg-sky-500/10 dark:bg-sky-400/10 px-1.5 py-0.5 rounded animate-pulse">{{ hoveredColorName }}</span>
+                                            <span v-else class="text-slate-400 dark:text-slate-500 italic">Sorot warna untuk melihat nama</span>
+                                        </div>
+
                                         <div
-                                            class="max-h-36 overflow-y-auto space-y-0.5 pr-1"
+                                            class="max-h-48 overflow-y-auto pr-1"
                                         >
-                                            <button
-                                                v-for="color in filteredColors"
-                                                :key="color.name"
-                                                @click="
-                                                    selectCompanyColor(color)
-                                                "
-                                                class="w-full py-1.5 px-2.5 rounded-lg text-left text-[11px] font-bold text-slate-700 dark:text-slate-350 hover:bg-sky-50 dark:hover:bg-slate-800 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-between cursor-pointer"
-                                                type="button"
-                                            >
-                                                <div
-                                                    class="flex items-center gap-2"
+                                            <div class="grid grid-cols-8 gap-2.5 p-1 justify-items-center">
+                                                <button
+                                                    v-for="color in filteredColors"
+                                                    :key="color.name"
+                                                    @click="selectCompanyColor(color)"
+                                                    @mouseenter="previewColor(color.hex, color.name)"
+                                                    @mouseleave="restoreColor"
+                                                    :title="color.name"
+                                                    :class="[
+                                                        'w-6 h-6 rounded-full border border-slate-200 dark:border-slate-700/80 transition-all duration-300 relative hover:scale-120 hover:z-10 focus:outline-none flex items-center justify-center cursor-pointer shadow-sm',
+                                                        store.shirtColor.toLowerCase() === color.hex.toLowerCase()
+                                                            ? 'ring-2 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 scale-110 shadow-[0_0_8px_rgba(14,165,233,0.45)]'
+                                                            : 'hover:border-slate-400',
+                                                    ]"
+                                                    :style="{ backgroundColor: color.hex }"
+                                                    type="button"
                                                 >
                                                     <span
-                                                        class="w-3 h-3 rounded-full border border-slate-200 dark:border-slate-700"
-                                                        :style="{
-                                                            backgroundColor:
-                                                                color.hex,
-                                                        }"
-                                                    ></span>
-                                                    <span>{{
-                                                        color.name
-                                                    }}</span>
-                                                </div>
-                                                <span
-                                                    v-if="
-                                                        store.shirtColor.toLowerCase() ===
-                                                        color.hex.toLowerCase()
-                                                    "
-                                                    class="text-sky-500 font-extrabold text-[9px]"
-                                                    >✓</span
-                                                >
-                                            </button>
+                                                        v-if="store.shirtColor.toLowerCase() === color.hex.toLowerCase()"
+                                                        :class="[
+                                                            'text-[8px] font-black',
+                                                            color.hex.toLowerCase() === '#ffffff'
+                                                                ? 'text-slate-900'
+                                                                : 'text-white',
+                                                        ]"
+                                                        >✓</span
+                                                    >
+                                                </button>
+                                            </div>
                                             <div
-                                                v-if="
-                                                    filteredColors.length === 0
-                                                "
-                                                class="text-center py-3 text-[10px] text-slate-400 dark:text-slate-500 font-bold"
+                                                v-if="filteredColors.length === 0"
+                                                class="text-center py-4 text-[10px] text-slate-400 dark:text-slate-500 font-bold"
                                             >
                                                 Warna tidak ditemukan
                                             </div>
@@ -1630,7 +1498,8 @@ const onDrop = (e: DragEvent) => {
 
             <!-- 5. Ekspor Hasil Desain Accordion -->
             <div
-                class="border border-sky-100/60 dark:border-slate-800/80 rounded-2xl overflow-hidden transition-all duration-300 bg-white/40 dark:bg-slate-900/10"
+                class="border border-sky-100/60 dark:border-slate-800/80 rounded-2xl transition-all duration-300 bg-white/40 dark:bg-slate-900/10"
+                :class="{ 'overflow-hidden': !isExportFullyOpen }"
             >
                 <button
                     @click="isExportOpen = !isExportOpen"
@@ -1682,6 +1551,8 @@ const onDrop = (e: DragEvent) => {
                     leave-active-class="transition-all duration-250 ease-in"
                     leave-from-class="max-h-[800px] opacity-100 transform translate-y-0"
                     leave-to-class="max-h-0 opacity-0 transform -translate-y-2"
+                    @after-enter="isExportFullyOpen = true"
+                    @before-leave="isExportFullyOpen = false"
                 >
                     <div
                         v-show="isExportOpen"

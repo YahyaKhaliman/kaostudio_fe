@@ -124,7 +124,7 @@ const transformOriginStyle = computed(() => {
         }
     }
 
-    const containerSize = 550;
+    const containerSize = 500;
 
     if (fabricCanvas) {
         const activeObj = fabricCanvas.getActiveObject();
@@ -133,7 +133,7 @@ const transformOriginStyle = computed(() => {
             const cTop = canvasTop.value;
 
             // Posisi X absolut: canvas dipusatkan secara horizontal
-            const objX = 275 + (objCenter.x - fabricCanvas.width / 2);
+            const objX = 250 + (objCenter.x - fabricCanvas.width / 2);
             const objY = cTop + objCenter.y;
 
             // Ubah koordinat absolut menjadi persentase transform-origin
@@ -263,16 +263,16 @@ const processedBack = ref<HTMLCanvasElement | null>(null);
 // Konfigurasi letak dan ukuran area sablon (torso area) pada canvas mockup 500x500px untuk setiap jenis kaos
 const shirtTypeConfigs = {
     tshirt: {
-        front: { baseTop: 95, pxPerCm: 5.5, sideMargin: 4.0 }, // margin samping 4cm
-        back: { baseTop: 85, pxPerCm: 5.5, sideMargin: 4.0 },
+        front: { baseTop: 95, pxPerCm: 5.5, sideMargin: 4.0, leftOffset: 0 }, // margin samping 4cm
+        back: { baseTop: 50, pxPerCm: 5.5, sideMargin: 4.0, leftOffset: 0 },
     },
     longTshirt: {
-        front: { baseTop: 100, pxPerCm: 5.4, sideMargin: 4.0 },
-        back: { baseTop: 90, pxPerCm: 5.4, sideMargin: 4.0 },
+        front: { baseTop: 100, pxPerCm: 5.4, sideMargin: 4.0, leftOffset: 0 },
+        back: { baseTop: 90, pxPerCm: 5.4, sideMargin: 4.0, leftOffset: 0 },
     },
     polo: {
-        front: { baseTop: 115, pxPerCm: 5.2, sideMargin: 4.5 }, // polo margin samping 4.5cm
-        back: { baseTop: 100, pxPerCm: 5.2, sideMargin: 4.5 },
+        front: { baseTop: 110, pxPerCm: 5.4, sideMargin: 4.0, leftOffset: -9 }, // geser 9px ke kiri agar pas di tengah kaos polo yang off-center
+        back: { baseTop: 90, pxPerCm: 5.4, sideMargin: 4.0, leftOffset: -9 },
     },
 };
 
@@ -313,23 +313,64 @@ let activeSnap: { x: number; y: number; name: string } | null = null;
 const getStandardSnapPoints = () => {
     const w = canvasWidth.value;
     const h = canvasHeight.value;
+    const type = store.currentShirtType;
 
-    if (displayedView.value === "front") {
-        return [
-            { name: "Tengah Dada", x: w / 2, y: h * 0.35 },
-            { name: "Dada Kiri", x: w * 0.7, y: h * 0.24 },
-            { name: "Dada Kanan", x: w * 0.3, y: h * 0.24 },
-            { name: "Bawah Kiri", x: w * 0.7, y: h * 0.8 },
-            { name: "Bawah Kanan", x: w * 0.3, y: h * 0.8 },
-            { name: "Tengah Kaos", x: w / 2, y: h / 2 },
-        ];
-    } else {
-        return [
-            { name: "Belakang Tengah", x: w / 2, y: h / 2 },
-            { name: "Belakang Tengah Atas", x: w / 2, y: h * 0.2 },
-            { name: "Belakang Tengah Bawah", x: w / 2, y: h * 0.8 },
-        ];
+    // Titik garis bantu (snap points) yang disendirikan per jenis kaos
+    if (type === "tshirt") {
+        if (displayedView.value === "front") {
+            return [
+                { name: "Tengah Dada", x: w / 2.1, y: h * 0.15 },
+                { name: "Dada Kanan", x: w * 0.21, y: h * 0.15 },
+                { name: "Dada Kiri", x: w * 0.75, y: h * 0.15 },
+                { name: "Bawah Kiri", x: w * 0.8, y: h * 0.8 },
+                { name: "Bawah Kanan", x: w * 0.21, y: h * 0.8 },
+                { name: "Tengah Kaos", x: w / 2.1, y: h / 2.2 },
+            ];
+        } else {
+            return [
+                { name: "Belakang Tengah", x: w / 2, y: h / 2.5 },
+                { name: "Belakang Tengah Atas", x: w / 2, y: h * 0.05 },
+                { name: "Belakang Tengah Bawah", x: w / 2, y: h * 0.8 },
+            ];
+        }
+    } else if (type === "longTshirt") {
+        if (displayedView.value === "front") {
+            return [
+                { name: "Tengah Dada", x: w / 2.1, y: h * 0.15 },
+                { name: "Dada Kanan", x: w * 0.2, y: h * 0.15 },
+                { name: "Dada Kiri", x: w * 0.77, y: h * 0.15 },
+                { name: "Bawah Kiri", x: w * 0.8, y: h * 0.8 },
+                { name: "Bawah Kanan", x: w * 0.21, y: h * 0.8 },
+                { name: "Tengah Kaos", x: w / 2.1, y: h / 2.2 },
+            ];
+        } else {
+            return [
+                { name: "Belakang Tengah", x: w / 2.1, y: h / 2.5 },
+                { name: "Belakang Tengah Atas", x: w / 2.1, y: h * 0.05 },
+                { name: "Belakang Tengah Bawah", x: w / 2.1, y: h * 0.8 },
+            ];
+        }
+    } else if (type === "polo") {
+        if (displayedView.value === "front") {
+            return [
+                { name: "Tengah Dada", x: w / 1.9, y: h * 0.2 },
+                { name: "Dada Kiri", x: w * 0.83, y: h * 0.18 },
+                { name: "Dada Kanan", x: w * 0.24, y: h * 0.18 },
+                { name: "Bawah Kiri", x: w * 0.83, y: h * 0.8 },
+                { name: "Bawah Kanan", x: w * 0.24, y: h * 0.8 },
+                { name: "Tengah Kaos", x: w / 1.9, y: h / 2.2 },
+            ];
+        } else {
+            return [
+                { name: "Belakang Tengah", x: w / 1.9, y: h / 2.5 },
+                { name: "Belakang Tengah Atas", x: w / 1.9, y: h * 0.05 },
+                { name: "Belakang Tengah Bawah", x: w / 1.9, y: h * 0.8 },
+            ];
+        }
     }
+
+    // Default fallback jika jenis tidak cocok
+    return [];
 };
 
 // Menghitung warna mockup secara statis untuk tampak depan dan belakang
@@ -338,11 +379,15 @@ const frontMockupUrl = computed(() => {
         let tagBox = undefined;
         if (store.currentShirtType === "tshirt") {
             tagBox = { left: 0.6645, top: 0.88, width: 0.0255, height: 0.0255 };
-        } else if (
-            store.currentShirtType === "longTshirt" ||
-            store.currentShirtType === "polo"
-        ) {
+        } else if (store.currentShirtType === "longTshirt") {
             tagBox = { left: 0.696, top: 0.907, width: 0.0255, height: 0.025 };
+        } else if (store.currentShirtType === "polo") {
+            tagBox = {
+                left: 0.6825,
+                top: 0.9253,
+                width: 0.0261,
+                height: 0.0251,
+            };
         }
         return colorizeMockup(processedFront.value, store.shirtColor, tagBox);
     }
@@ -372,10 +417,11 @@ const getPrintableAreaStyle = (view: "front" | "back", size: number) => {
     const refLength = 71;
     const diff = (refLength - sizeData.length) * pcm;
     const cTop = (config.baseTop + diff * 0.25) * scale;
+    const offset = (config.leftOffset || 0) * scale;
 
     return {
         top: `${cTop}px`,
-        left: "50%",
+        left: `calc(50% + ${offset}px)`,
         transform: "translateX(-50%)",
         width: `${cWidth}px`,
         height: `${cHeight}px`,
@@ -385,10 +431,11 @@ const getPrintableAreaStyle = (view: "front" | "back", size: number) => {
 
 // Menghitung gaya letak area sablon di UI secara absolute
 const printableAreaStyle = computed(() => {
+    const offset = activeShirtConfig.value.leftOffset || 0;
     return {
         position: "absolute" as const,
         top: `${canvasTop.value}px`,
-        left: "50%",
+        left: `calc(50% + ${offset}px)`,
         transform: "translateX(-50%)",
         width: `${canvasWidth.value}px`,
         height: `${canvasHeight.value}px`,
@@ -416,11 +463,15 @@ const updateMockupColor = () => {
         let tagBox = undefined;
         if (store.currentShirtType === "tshirt") {
             tagBox = { left: 0.6645, top: 0.88, width: 0.0255, height: 0.0255 };
-        } else if (
-            store.currentShirtType === "longTshirt" ||
-            store.currentShirtType === "polo"
-        ) {
+        } else if (store.currentShirtType === "longTshirt") {
             tagBox = { left: 0.696, top: 0.907, width: 0.0255, height: 0.025 };
+        } else if (store.currentShirtType === "polo") {
+            tagBox = {
+                left: 0.6825,
+                top: 0.9253,
+                width: 0.0261,
+                height: 0.0251,
+            };
         }
         currentMockupUrl.value = colorizeMockup(
             processedFront.value,
@@ -582,25 +633,63 @@ const initCanvasEvents = () => {
     fabricCanvas.on("object:removed", updateDesignPreviews);
 };
 
-// Menyimpan state kanvas saat ini ke Pinia
+// Menyimpan state kanvas saat ini ke Pinia beserta dimensi kanvas aktif untuk sinkronisasi proporsional
 const saveCurrentState = () => {
     if (fabricCanvas && displayedView.value !== "both") {
-        store.saveCanvasState(displayedView.value, fabricCanvas.toJSON());
+        const stateObj = {
+            json: fabricCanvas.toJSON(),
+            canvasWidth: fabricCanvas.width,
+            canvasHeight: fabricCanvas.height,
+        };
+        store.saveCanvasState(displayedView.value, stateObj);
         store.saveToLocalStorage(); // Simpan perubahan ke LocalStorage
     }
 };
 
-// Memuat state kanvas untuk view tertentu dari Pinia
+// Memuat state kanvas untuk view tertentu dari Pinia dengan penyesuaian dimensi otomatis
 const loadStateForView = async (view: "front" | "back") => {
     if (!fabricCanvas) return;
 
     // Hapus semua objek
     fabricCanvas.clear();
 
-    const savedState = store.canvasStates[view];
-    if (savedState) {
+    const savedData = store.canvasStates[view];
+    if (savedData) {
         try {
-            await fabricCanvas.loadFromJSON(savedState);
+            // Kompatibilitas mundur jika ada format lama yang hanya berupa JSON mentah Fabric.js
+            const hasWrapper =
+                savedData &&
+                typeof savedData === "object" &&
+                "json" in savedData;
+            const jsonState = hasWrapper ? savedData.json : savedData;
+
+            await fabricCanvas.loadFromJSON(jsonState);
+
+            // Jika ada metadata dimensi kanvas tersimpan dan berbeda dengan dimensi saat ini,
+            // lakukan penskalaan letak dan ukuran objek agar tetap presisi
+            if (hasWrapper && savedData.canvasWidth && savedData.canvasHeight) {
+                const oldW = savedData.canvasWidth;
+                const oldH = savedData.canvasHeight;
+                const newW = fabricCanvas.width;
+                const newH = fabricCanvas.height;
+
+                if (oldW !== newW || oldH !== newH) {
+                    const scaleX = newW / oldW;
+                    const scaleY = newH / oldH;
+                    const objScaleFactor = scaleX;
+
+                    fabricCanvas.getObjects().forEach((obj) => {
+                        obj.set({
+                            left: obj.left * scaleX,
+                            top: obj.top * scaleY,
+                            scaleX: obj.scaleX * objScaleFactor,
+                            scaleY: obj.scaleY * objScaleFactor,
+                        });
+                        obj.setCoords();
+                    });
+                }
+            }
+
             fabricCanvas.renderAll();
         } catch (e) {
             console.error("Gagal memuat state kanvas:", e);
@@ -659,7 +748,12 @@ watch(
         // Simpan state kanvas untuk view lama (oldView) sebelum diubah
         if (oldView && oldView !== "both") {
             if (fabricCanvas) {
-                store.saveCanvasState(oldView, fabricCanvas.toJSON());
+                const stateObj = {
+                    json: fabricCanvas.toJSON(),
+                    canvasWidth: fabricCanvas.width,
+                    canvasHeight: fabricCanvas.height,
+                };
+                store.saveCanvasState(oldView, stateObj);
                 // Perbarui preview transparan di store agar saat mode 'both' dirender, preview terbarunya langsung muncul
                 updateDesignPreviews();
             }
@@ -722,7 +816,7 @@ watch(
     },
 );
 
-// Watcher untuk mendeteksi perubahan ukuran kaos agar mengupdate dimensi fisik sablon dan ukuran canvas
+// Watcher untuk mendeteksi perubahan ukuran kaos agar mengupdate dimensi fisik sablon, ukuran canvas, dan skala objek
 watch(
     () => store.currentSize,
     () => {
@@ -742,7 +836,7 @@ watch(
                 height: newHeight,
             });
 
-            // Scaled objects positions proportionally
+            // Skalakan letak koordinat dan ukuran objek secara proporsional
             if (
                 oldWidth &&
                 oldHeight &&
@@ -750,25 +844,67 @@ watch(
             ) {
                 const scaleX = newWidth / oldWidth;
                 const scaleY = newHeight / oldHeight;
+                const objScaleFactor = scaleX; // Gunakan rasio lebar untuk mempertahankan aspek rasio sablon
 
                 fabricCanvas.getObjects().forEach((obj) => {
                     obj.set({
                         left: obj.left * scaleX,
                         top: obj.top * scaleY,
+                        scaleX: obj.scaleX * objScaleFactor,
+                        scaleY: obj.scaleY * objScaleFactor,
                     });
                     obj.setCoords();
                 });
             }
             fabricCanvas.renderAll();
+            // Simpan state aktif yang baru ter-scale agar tersinkronisasi di store
+            saveCurrentState();
             updateDesignPreviews();
         }
     },
 );
 
+// Watcher untuk mendeteksi perubahan jenis kaos agar menyesuaikan gambar mockup, ukuran kanvas, dan skala objek
 watch(
     () => store.currentShirtType,
     async () => {
         await initMockupImages();
+        if (fabricCanvas) {
+            const oldWidth = fabricCanvas.width;
+            const oldHeight = fabricCanvas.height;
+            const newWidth = canvasWidth.value;
+            const newHeight = canvasHeight.value;
+
+            fabricCanvas.setDimensions({
+                width: newWidth,
+                height: newHeight,
+            });
+
+            // Skalakan objek secara proporsional sesuai dengan karakteristik kanvas kaos baru
+            if (
+                oldWidth &&
+                oldHeight &&
+                (oldWidth !== newWidth || oldHeight !== newHeight)
+            ) {
+                const scaleX = newWidth / oldWidth;
+                const scaleY = newHeight / oldHeight;
+                const objScaleFactor = scaleX;
+
+                fabricCanvas.getObjects().forEach((obj) => {
+                    obj.set({
+                        left: obj.left * scaleX,
+                        top: obj.top * scaleY,
+                        scaleX: obj.scaleX * objScaleFactor,
+                        scaleY: obj.scaleY * objScaleFactor,
+                    });
+                    obj.setCoords();
+                });
+            }
+            fabricCanvas.renderAll();
+            // Simpan state baru yang ter-scale
+            saveCurrentState();
+            updateDesignPreviews();
+        }
         store.saveToLocalStorage();
     },
 );
@@ -901,7 +1037,7 @@ const sendToBack = () => {
     }
 };
 
-// Fungsi pembantu untuk memproduksi data URL cetak transparan secara dinamis untuk view tertentu
+// Fungsi pembantu untuk memproduksi data URL cetak transparan secara dinamis untuk view tertentu dengan penskalaan ekspor
 const getPrintDataUrl = async (view: "front" | "back"): Promise<string> => {
     if (displayedView.value === view && fabricCanvas) {
         fabricCanvas.discardActiveObject();
@@ -912,15 +1048,16 @@ const getPrintDataUrl = async (view: "front" | "back"): Promise<string> => {
         });
     }
 
-    const savedState = store.canvasStates[view];
-    if (!savedState) return "";
+    const savedData = store.canvasStates[view];
+    if (!savedData) return "";
 
     return new Promise((resolve) => {
         const tempCanvasEl = document.createElement("canvas");
         const sizeData = store.shirtSizes[store.currentSize];
         const config = shirtTypeConfigs[store.currentShirtType][view];
         const pcm = config.pxPerCm;
-        const w = sizeData.width * pcm;
+        const margin = config.sideMargin;
+        const w = (sizeData.width - 2 * margin) * pcm;
         const h = sizeData.length * pcm;
         tempCanvasEl.width = w;
         tempCanvasEl.height = h;
@@ -931,9 +1068,42 @@ const getPrintDataUrl = async (view: "front" | "back"): Promise<string> => {
             backgroundColor: "transparent",
         });
 
+        // Deteksi pembungkus dimensi
+        const hasWrapper =
+            savedData && typeof savedData === "object" && "json" in savedData;
+        const jsonState = hasWrapper ? savedData.json : savedData;
+
         tempCanvas
-            .loadFromJSON(savedState)
+            .loadFromJSON(jsonState)
             .then(() => {
+                // Skalakan objek tempCanvas secara fisik jika dimensi tersimpan berbeda dengan dimensi ekspor target
+                if (
+                    hasWrapper &&
+                    savedData.canvasWidth &&
+                    savedData.canvasHeight
+                ) {
+                    const oldW = savedData.canvasWidth;
+                    const oldH = savedData.canvasHeight;
+                    const newW = w;
+                    const newH = h;
+
+                    if (oldW !== newW || oldH !== newH) {
+                        const scaleX = newW / oldW;
+                        const scaleY = newH / oldH;
+                        const objScaleFactor = scaleX;
+
+                        tempCanvas.getObjects().forEach((obj) => {
+                            obj.set({
+                                left: obj.left * scaleX,
+                                top: obj.top * scaleY,
+                                scaleX: obj.scaleX * objScaleFactor,
+                                scaleY: obj.scaleY * objScaleFactor,
+                            });
+                            obj.setCoords();
+                        });
+                    }
+                }
+
                 tempCanvas.renderAll();
                 const dataUrl = tempCanvas.toDataURL({
                     format: "png",
@@ -950,6 +1120,64 @@ const getPrintDataUrl = async (view: "front" | "back"): Promise<string> => {
     });
 };
 
+// Fungsi pembantu untuk menggabungkan dua gambar depan dan belakang secara horizontal
+const mergeImagesSideBySide = (
+    dataUrl1: string,
+    dataUrl2: string,
+    isMockup: boolean,
+): Promise<string> => {
+    return new Promise((resolve) => {
+        const img1 = new Image();
+        const img2 = new Image();
+        let loadedCount = 0;
+
+        const onImageLoad = async () => {
+            loadedCount++;
+            if (loadedCount === 2) {
+                const canvas = document.createElement("canvas");
+                const gap = 24; // Jarak horizontal antara depan & belakang
+                canvas.width = img1.width + img2.width + gap;
+                canvas.height = Math.max(img1.height, img2.height);
+
+                const ctx = canvas.getContext("2d");
+                if (!ctx) {
+                    resolve("");
+                    return;
+                }
+
+                if (isMockup) {
+                    // Gambar warna/tipe latar belakang terpilih pada canvas gabungan
+                    await drawBackdrop(ctx, canvas.width, canvas.height);
+                } else {
+                    // Untuk sablon transparan, biarkan transparan sepenuhnya
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+
+                // Gambar sisi depan di sebelah kiri
+                ctx.drawImage(img1, 0, 0);
+                // Gambar sisi belakang di sebelah kanan
+                ctx.drawImage(img2, img1.width + gap, 0);
+
+                const mimeType =
+                    isMockup && store.backdropType !== "checkerboard"
+                        ? "image/jpeg"
+                        : "image/png";
+                const quality = mimeType === "image/jpeg" ? 0.95 : undefined;
+
+                resolve(canvas.toDataURL(mimeType, quality));
+            }
+        };
+
+        img1.onload = onImageLoad;
+        img2.onload = onImageLoad;
+        img1.onerror = () => resolve("");
+        img2.onerror = () => resolve("");
+
+        img1.src = dataUrl1;
+        img2.src = dataUrl2;
+    });
+};
+
 // Ekspor File Cetak Sablon Saja (Transparan)
 const exportPrint = async (
     view: "front" | "back" | "both",
@@ -957,7 +1185,7 @@ const exportPrint = async (
     saveCurrentState();
     const results: { name: string; dataUrl: string }[] = [];
 
-    if (view === "front" || view === "both") {
+    if (view === "front") {
         const dataUrl = await getPrintDataUrl("front");
         if (dataUrl) {
             results.push({
@@ -965,14 +1193,38 @@ const exportPrint = async (
                 dataUrl,
             });
         }
-    }
-
-    if (view === "back" || view === "both") {
+    } else if (view === "back") {
         const dataUrl = await getPrintDataUrl("back");
         if (dataUrl) {
             results.push({
                 name: `desain-sablon-belakang-${Date.now()}.png`,
                 dataUrl,
+            });
+        }
+    } else if (view === "both") {
+        const frontUrl = await getPrintDataUrl("front");
+        const backUrl = await getPrintDataUrl("back");
+        if (frontUrl && backUrl) {
+            const mergedUrl = await mergeImagesSideBySide(
+                frontUrl,
+                backUrl,
+                false,
+            );
+            if (mergedUrl) {
+                results.push({
+                    name: `desain-sablon-gabungan-${Date.now()}.png`,
+                    dataUrl: mergedUrl,
+                });
+            }
+        } else if (frontUrl) {
+            results.push({
+                name: `desain-sablon-depan-${Date.now()}.png`,
+                dataUrl: frontUrl,
+            });
+        } else if (backUrl) {
+            results.push({
+                name: `desain-sablon-belakang-${Date.now()}.png`,
+                dataUrl: backUrl,
             });
         }
     }
@@ -1069,20 +1321,34 @@ const getMockupDataUrl = async (view: "front" | "back"): Promise<string> => {
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.onload = async () => {
+            // Tentukan dimensi dasar square canvas ekspor agar selalu 1:1 (mencegah distorsi pada gambar non-square)
+            const maxDim = Math.max(img.width, img.height);
+
             const exportCanvas = document.createElement("canvas");
-            exportCanvas.width = img.width;
-            exportCanvas.height = img.height;
+            exportCanvas.width = maxDim;
+            exportCanvas.height = maxDim;
             const ctx = exportCanvas.getContext("2d");
             if (!ctx) {
                 resolve("");
                 return;
             }
 
-            // Gambar warna/tipe latar belakang terpilih
-            await drawBackdrop(ctx, img.width, img.height);
+            // Gambar warna/tipe latar belakang terpilih pada seluruh canvas square
+            await drawBackdrop(ctx, maxDim, maxDim);
 
-            // Gambar warna kaos di atas backdrop
-            ctx.drawImage(img, 0, 0);
+            // Hitung posisi drawImage untuk mensimulasikan CSS 'object-contain' di canvas square
+            // (menempatkan gambar kaos tepat di tengah secara proporsional)
+            const scaleToFit = Math.min(
+                maxDim / img.width,
+                maxDim / img.height,
+            );
+            const drawW = img.width * scaleToFit;
+            const drawH = img.height * scaleToFit;
+            const drawX = (maxDim - drawW) / 2;
+            const drawY = (maxDim - drawH) / 2;
+
+            // Gambar kaos di posisi tengah proporsional
+            ctx.drawImage(img, drawX, drawY, drawW, drawH);
 
             const mimeType =
                 store.backdropType === "checkerboard"
@@ -1094,29 +1360,33 @@ const getMockupDataUrl = async (view: "front" | "back"): Promise<string> => {
             if (printDataUrl) {
                 const canvasImg = new Image();
                 canvasImg.onload = () => {
-                    const scaleX = img.width / 500;
-                    const scaleY = img.height / 500;
-
-                    const cWidth = canvasWidth.value;
-                    const cHeight = canvasHeight.value;
-                    const cLeft = (500 - cWidth) / 2;
-
-                    // Gunakan baseTop & diff yang sesuai dengan view
-                    const refLength = 71;
-                    const sizeData = store.shirtSizes[store.currentSize];
+                    const scale = maxDim / 500;
                     const config =
                         shirtTypeConfigs[store.currentShirtType][view];
                     const pcm = config.pxPerCm;
+                    const sizeData = store.shirtSizes[store.currentSize];
+
+                    // Hitung cWidth dan cHeight murni dari konfigurasi sisi (view) yang sedang diproses
+                    const cWidth =
+                        (sizeData.width - 2 * config.sideMargin) * pcm;
+                    const cHeight = sizeData.length * pcm;
+
+                    // Hitung cLeft murni dengan leftOffset yang sesuai
+                    const offset = config.leftOffset || 0;
+                    const cLeft = (500 - cWidth) / 2 + offset;
+
+                    // Gunakan baseTop & diff yang sesuai dengan view
+                    const refLength = 71;
                     const diff = (refLength - sizeData.length) * pcm;
                     const baseTop = config.baseTop;
                     const cTop = baseTop + diff * 0.25;
 
                     ctx.drawImage(
                         canvasImg,
-                        cLeft * scaleX,
-                        cTop * scaleY,
-                        cWidth * scaleX,
-                        cHeight * scaleY,
+                        cLeft * scale,
+                        cTop * scale,
+                        cWidth * scale,
+                        cHeight * scale,
                     );
                     resolve(exportCanvas.toDataURL(mimeType, quality));
                 };
@@ -1137,22 +1407,46 @@ const exportMockup = async (
     const results: { name: string; dataUrl: string }[] = [];
     const ext = store.backdropType === "checkerboard" ? "png" : "jpg";
 
-    if (view === "front" || view === "both") {
+    if (view === "front") {
         const dataUrl = await getMockupDataUrl("front");
         if (dataUrl) {
             results.push({
-                name: `mockup-kaos-depan-${Date.now()}.${ext}`,
+                name: `mockup-kaosan-depan-${Date.now()}.${ext}`,
                 dataUrl,
             });
         }
-    }
-
-    if (view === "back" || view === "both") {
+    } else if (view === "back") {
         const dataUrl = await getMockupDataUrl("back");
         if (dataUrl) {
             results.push({
-                name: `mockup-kaos-belakang-${Date.now()}.${ext}`,
+                name: `mockup-kaosan-belakang-${Date.now()}.${ext}`,
                 dataUrl,
+            });
+        }
+    } else if (view === "both") {
+        const frontUrl = await getMockupDataUrl("front");
+        const backUrl = await getMockupDataUrl("back");
+        if (frontUrl && backUrl) {
+            const mergedUrl = await mergeImagesSideBySide(
+                frontUrl,
+                backUrl,
+                true,
+            );
+            if (mergedUrl) {
+                results.push({
+                    name: `mockup-kaosan-gabungan-${Date.now()}.${ext}`,
+                    dataUrl: mergedUrl,
+                });
+            }
+        } else if (frontUrl) {
+            results.push({
+                name: `mockup-kaosan-depan-${Date.now()}.${ext}`,
+                dataUrl: frontUrl,
+            });
+        } else if (backUrl) {
+            results.push({
+                name: `mockup-kaosan-belakang-${Date.now()}.${ext}`,
+                dataUrl: backUrl,
             });
         }
     }
@@ -1205,6 +1499,109 @@ const updateSelectedFontSize = (val: number) => {
     }
 };
 
+const updateSelectedImageSize = (widthCm: number, heightCm: number) => {
+    if (!fabricCanvas) return;
+    const obj = fabricCanvas.getActiveObject();
+    if (!obj || obj.type !== "image") return;
+
+    const imgW = obj.width;
+    const imgH = obj.height;
+    if (!imgW || !imgH) return;
+
+    const aspectRatio = imgW / imgH;
+    const targetRatio = widthCm / heightCm;
+
+    let targetWidthCm = widthCm;
+    let targetHeightCm = heightCm;
+
+    if (aspectRatio > targetRatio) {
+        // Gambar landscape, lebar mengikuti batas template
+        targetHeightCm = widthCm / aspectRatio;
+    } else {
+        // Gambar portrait, tinggi mengikuti batas template
+        targetWidthCm = heightCm * aspectRatio;
+    }
+
+    const targetWidthPx = targetWidthCm * pxPerCm.value;
+    const targetHeightPx = targetHeightCm * pxPerCm.value;
+
+    const scaleX = targetWidthPx / imgW;
+    const scaleY = targetHeightPx / imgH;
+
+    obj.set({
+        scaleX: scaleX,
+        scaleY: scaleY,
+    });
+    obj.setCoords();
+    fabricCanvas.renderAll();
+
+    updateSelectedObjectDimensions();
+    updateDesignPreviews();
+    saveCurrentState();
+};
+
+const handleWidthInput = (e: Event) => {
+    if (!fabricCanvas) return;
+    const target = e.target as HTMLInputElement;
+    const val = parseFloat(target.value);
+    if (isNaN(val) || val <= 0) return;
+
+    const obj = fabricCanvas.getActiveObject();
+    if (!obj) return;
+
+    const imgW = obj.width;
+    const imgH = obj.height;
+    if (!imgW || !imgH) return;
+
+    const aspectRatio = imgW / imgH;
+    const targetHeightCm = val / aspectRatio;
+
+    const targetWidthPx = val * pxPerCm.value;
+    const targetHeightPx = targetHeightCm * pxPerCm.value;
+
+    obj.set({
+        scaleX: targetWidthPx / imgW,
+        scaleY: targetHeightPx / imgH,
+    });
+    obj.setCoords();
+    fabricCanvas.renderAll();
+
+    updateSelectedObjectDimensions();
+    updateDesignPreviews();
+    saveCurrentState();
+};
+
+const handleHeightInput = (e: Event) => {
+    if (!fabricCanvas) return;
+    const target = e.target as HTMLInputElement;
+    const val = parseFloat(target.value);
+    if (isNaN(val) || val <= 0) return;
+
+    const obj = fabricCanvas.getActiveObject();
+    if (!obj) return;
+
+    const imgW = obj.width;
+    const imgH = obj.height;
+    if (!imgW || !imgH) return;
+
+    const aspectRatio = imgW / imgH;
+    const targetWidthCm = val * aspectRatio;
+
+    const targetWidthPx = targetWidthCm * pxPerCm.value;
+    const targetHeightPx = val * pxPerCm.value;
+
+    obj.set({
+        scaleX: targetWidthPx / imgW,
+        scaleY: targetHeightPx / imgH,
+    });
+    obj.setCoords();
+    fabricCanvas.renderAll();
+
+    updateSelectedObjectDimensions();
+    updateDesignPreviews();
+    saveCurrentState();
+};
+
 const deselectObject = () => {
     if (fabricCanvas) {
         fabricCanvas.discardActiveObject();
@@ -1226,6 +1623,7 @@ defineExpose({
     updateSelectedColor,
     updateSelectedFont,
     updateSelectedFontSize,
+    updateSelectedImageSize,
     deselectObject,
 });
 </script>
@@ -1235,7 +1633,7 @@ defineExpose({
         <!-- Container Mockup Kaos (Mode Edit - Hanya tampil jika bukan mode 'both') -->
         <div
             v-show="store.currentView !== 'both'"
-            class="relative w-[550px] h-[550px] rounded-3xl flex items-center justify-center overflow-hidden border border-sky-100 dark:border-slate-800 transition-all duration-300 shadow-lg bg-white dark:bg-slate-900/60 perspective-1000"
+            class="relative w-[500px] h-[500px] rounded-3xl flex items-center justify-center overflow-hidden border border-sky-100 dark:border-slate-800 transition-all duration-300 shadow-lg bg-white dark:bg-slate-900/60 perspective-1000"
             :class="{
                 'bg-checkerboard-light': store.backdropType === 'checkerboard',
                 'bg-studio-wall': store.backdropType === 'gradient',
@@ -1508,7 +1906,7 @@ defineExpose({
         <Transition name="fade">
             <div
                 v-if="store.currentView !== 'both' && selectedObjectDimensions"
-                class="mt-5 w-[550px] p-3.5 bg-gradient-to-r from-sky-500/10 to-indigo-500/10 dark:from-slate-800/30 dark:to-slate-850/30 border border-sky-200/50 dark:border-slate-800/80 rounded-2xl flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-200"
+                class="mt-5 w-[500px] p-3.5 bg-gradient-to-r from-sky-500/10 to-indigo-500/10 dark:from-slate-800/30 dark:to-slate-850/30 border border-sky-200/50 dark:border-slate-800/80 rounded-2xl flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-200"
             >
                 <div class="flex items-center gap-2">
                     <div
@@ -1520,7 +1918,7 @@ defineExpose({
                         <h5
                             class="text-[9px] font-black uppercase tracking-wider text-sky-900 dark:text-sky-300"
                         >
-                            Dimensi Fisik Sablon (Riil)
+                            Dimensi Fisik Sablon (Toleransi 1-2 Cm)
                         </h5>
                         <p
                             class="text-[8px] text-slate-500 dark:text-slate-400 font-medium mt-0.5"
@@ -1533,25 +1931,57 @@ defineExpose({
                         </p>
                     </div>
                 </div>
-                <div class="text-right">
-                    <span
-                        class="text-sm font-extrabold font-mono text-sky-600 dark:text-sky-400 bg-white dark:bg-slate-850 border border-sky-100 dark:border-slate-800 px-3 py-1 rounded-xl shadow-sm"
+                <div class="flex items-center gap-2">
+                    <!-- Input Lebar (W) -->
+                    <div
+                        class="flex items-center gap-1 bg-white dark:bg-slate-850 border border-sky-100 dark:border-slate-800 px-2 py-1 rounded-xl shadow-sm"
                     >
-                        {{ selectedObjectDimensions.width }}
                         <span
-                            class="text-[10px] font-bold text-slate-400 dark:text-slate-500"
+                            class="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase"
+                            >L:</span
+                        >
+                        <input
+                            type="number"
+                            step="0.1"
+                            min="1"
+                            max="100"
+                            :value="selectedObjectDimensions.width"
+                            @input="handleWidthInput"
+                            class="w-12 px-0.5 text-xs font-extrabold font-mono text-center text-sky-600 dark:text-sky-400 bg-transparent border-none outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            title="Lebar sablon dalam cm (ketik untuk mengubah)"
+                        />
+                        <span class="text-[8px] font-bold text-slate-400"
                             >cm</span
                         >
+                    </div>
+
+                    <span
+                        class="text-slate-400 dark:text-slate-500 font-bold text-xs"
+                        >×</span
+                    >
+
+                    <!-- Input Tinggi (H) -->
+                    <div
+                        class="flex items-center gap-1 bg-white dark:bg-slate-850 border border-sky-100 dark:border-slate-800 px-2 py-1 rounded-xl shadow-sm"
+                    >
                         <span
-                            class="text-slate-300 dark:text-slate-600 font-light mx-1"
-                            >×</span
+                            class="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase"
+                            >T:</span
                         >
-                        {{ selectedObjectDimensions.height }}
-                        <span
-                            class="text-[10px] font-bold text-slate-400 dark:text-slate-500"
+                        <input
+                            type="number"
+                            step="0.1"
+                            min="1"
+                            max="100"
+                            :value="selectedObjectDimensions.height"
+                            @input="handleHeightInput"
+                            class="w-12 px-0.5 text-xs font-extrabold font-mono text-center text-sky-600 dark:text-sky-400 bg-transparent border-none outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            title="Tinggi sablon dalam cm (ketik untuk mengubah)"
+                        />
+                        <span class="text-[8px] font-bold text-slate-400"
                             >cm</span
                         >
-                    </span>
+                    </div>
                 </div>
             </div>
         </Transition>
