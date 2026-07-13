@@ -729,7 +729,7 @@ const onDrop = (e: DragEvent) => {
                                                         <circle cx="12" cy="10.5" r="0.5" fill="currentColor" />
                                                     </svg>
                                                     <div class="min-w-0">
-                                                        <div class="font-extrabold uppercase text-[9px] truncate">Kaos Polo</div>
+                                                        <div class="font-extrabold uppercase text-[9px] truncate">Polo</div>
                                                         <div class="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium truncate">Kerah / Formal</div>
                                                     </div>
                                                 </div>
