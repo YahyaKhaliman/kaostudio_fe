@@ -693,7 +693,7 @@ const onDrop = (e: DragEvent) => {
                                                     </svg>
                                                     <div class="min-w-0">
                                                         <div class="font-extrabold uppercase text-[9px] truncate">Kaos Polos Pendek</div>
-                                                        <div class="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium truncate">Oblong Standar</div>
+                                                        <div class="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium truncate">Lengan Pendek </div>
                                                     </div>
                                                 </div>
                                                 <span v-if="store.currentShirtType === 'tshirt'" class="text-sky-500 font-extrabold text-[9px] flex-shrink-0">✓</span>
@@ -729,7 +729,7 @@ const onDrop = (e: DragEvent) => {
                                                         <circle cx="12" cy="10.5" r="0.5" fill="currentColor" />
                                                     </svg>
                                                     <div class="min-w-0">
-                                                        <div class="font-extrabold uppercase text-[9px] truncate">Kaos Polos</div>
+                                                        <div class="font-extrabold uppercase text-[9px] truncate">Kaos Polo</div>
                                                         <div class="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium truncate">Kerah / Formal</div>
                                                     </div>
                                                 </div>
