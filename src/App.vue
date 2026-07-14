@@ -139,6 +139,14 @@ const handleExportPrint = async (view: "front" | "back" | "both") => {
 const handleDeselectObject = () => {
     canvasRef.value?.deselectObject();
 };
+
+const handleCropSelectedImage = (croppedDataUrl: string) => {
+    canvasRef.value?.cropSelectedImage(croppedDataUrl);
+};
+
+const handleUpdateRotation = (angle: number) => {
+    canvasRef.value?.updateSelectedRotation(angle);
+};
 </script>
 
 <template>
@@ -239,9 +247,10 @@ const handleDeselectObject = () => {
             </div>
 
             <!-- Sisi Kanan: Panel Kontrol (Col 8-12) -->
-            <div class="lg:col-span-5 relative">
+            <div class="lg:col-span-5 relative w-full max-w-xl lg:max-w-none mx-auto">
                 <ControlPanel
                     :selected-object="canvasRef?.selectedObject"
+                    :selected-object-rotation="canvasRef?.selectedObjectRotation"
                     @add-text="handleAddText"
                     @add-image="handleAddImage"
                     @delete-selected="handleDeleteSelected"
@@ -255,6 +264,8 @@ const handleDeselectObject = () => {
                     @update-font-size="handleUpdateFontSize"
                     @update-image-size="handleUpdateImageSize"
                     @deselect-object="handleDeselectObject"
+                    @crop-selected-image="handleCropSelectedImage"
+                    @update-rotation="handleUpdateRotation"
                 />
             </div>
         </main>

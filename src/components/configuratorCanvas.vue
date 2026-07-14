@@ -58,6 +58,7 @@ let fabricCanvas: Canvas | null = null;
 const isProcessing = ref(true);
 const currentMockupUrl = ref("");
 const selectedObject = ref<any>(null);
+const selectedObjectRotation = ref(0);
 const displayedView = ref<ViewType>(store.currentView);
 const isFlipping = ref(false);
 
@@ -552,7 +553,9 @@ const initCanvasEvents = () => {
     if (!fabricCanvas) return;
 
     const updateSelectedObject = () => {
-        selectedObject.value = fabricCanvas?.getActiveObject() || null;
+        const obj = fabricCanvas?.getActiveObject() || null;
+        selectedObject.value = obj;
+        selectedObjectRotation.value = obj ? Math.round(obj.angle || 0) : 0;
         updateSelectedObjectDimensions();
         updateTooltipPosition();
     };
@@ -561,6 +564,7 @@ const initCanvasEvents = () => {
     fabricCanvas.on("selection:updated", updateSelectedObject);
     fabricCanvas.on("selection:cleared", () => {
         selectedObject.value = null;
+        selectedObjectRotation.value = 0;
         selectedObjectDimensions.value = null;
         tooltipStyle.value.display = "none";
         activeSnapPoint.value = null;
@@ -618,7 +622,13 @@ const initCanvasEvents = () => {
         updateTooltipPosition();
         updateSelectedObjectDimensions();
     });
-    fabricCanvas.on("object:rotating", updateTooltipPosition);
+    fabricCanvas.on("object:rotating", () => {
+        updateTooltipPosition();
+        const obj = fabricCanvas?.getActiveObject();
+        if (obj) {
+            selectedObjectRotation.value = Math.round(obj.angle || 0);
+        }
+    });
 
     // Dapatkan preview desain baru setiap kali kanvas dimanipulasi
     fabricCanvas.on("object:added", updateDesignPreviews);
@@ -1624,6 +1634,49 @@ const deselectObject = () => {
     }
 };
 
+const cropSelectedImage = (croppedDataUrl: string) => {
+    if (!fabricCanvas) return;
+    const activeObj = fabricCanvas.getActiveObject();
+    if (activeObj && activeObj.type === "image") {
+        const imgObj = activeObj as FabricImage;
+        const imgEl = new Image();
+        imgEl.onload = () => {
+            const oldWidthPx = imgObj.width * imgObj.scaleX;
+            imgObj.setElement(imgEl);
+            imgObj.set({
+                width: imgEl.naturalWidth || imgEl.width,
+                height: imgEl.naturalHeight || imgEl.height,
+            });
+            const newScaleX = oldWidthPx / imgObj.width;
+            imgObj.set({
+                scaleX: newScaleX,
+                scaleY: newScaleX,
+            });
+            imgObj.setCoords();
+            fabricCanvas!.renderAll();
+            updateSelectedObjectDimensions();
+            updateDesignPreviews();
+            saveCurrentState();
+        };
+        imgEl.src = croppedDataUrl;
+    }
+};
+
+const updateSelectedRotation = (angle: number) => {
+    if (!fabricCanvas) return;
+    const obj = fabricCanvas.getActiveObject();
+    if (obj) {
+        const normalizedAngle = ((angle % 360) + 360) % 360;
+        obj.set({ angle: normalizedAngle });
+        selectedObjectRotation.value = Math.round(normalizedAngle);
+        obj.setCoords();
+        fabricCanvas.renderAll();
+        updateTooltipPosition();
+        updateDesignPreviews();
+        saveCurrentState();
+    }
+};
+
 defineExpose({
     addText,
     addImage,
@@ -1633,6 +1686,7 @@ defineExpose({
     exportPrint,
     exportMockup,
     selectedObject,
+    selectedObjectRotation,
     fabricCanvas,
     updateSelectedText,
     updateSelectedColor,
@@ -1640,6 +1694,8 @@ defineExpose({
     updateSelectedFontSize,
     updateSelectedImageSize,
     deselectObject,
+    cropSelectedImage,
+    updateSelectedRotation,
 });
 </script>
 

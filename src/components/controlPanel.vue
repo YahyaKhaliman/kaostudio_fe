@@ -20,14 +20,17 @@ import {
     PhCaretDown,
     PhRuler,
     PhX,
+    PhCrop,
 } from "@phosphor-icons/vue";
 
 import { compressImage, formatBytes } from "../utils/imageCompressor";
 import { presetColors, companyColors, type ColorItem } from "../utils/colors";
 import sizeChartImg from "../assets/images/size_chart.png";
+import ImageCropperModal from "./ImageCropperModal.vue";
 
 const props = defineProps<{
     selectedObject: any;
+    selectedObjectRotation?: number;
 }>();
 
 const emit = defineEmits<{
@@ -44,6 +47,8 @@ const emit = defineEmits<{
     (e: "update-font-size", size: number): void;
     (e: "update-image-size", widthCm: number, heightCm: number): void;
     (e: "deselect-object"): void;
+    (e: "crop-selected-image", croppedDataUrl: string): void;
+    (e: "update-rotation", angle: number): void;
 }>();
 
 const store = useConfiguratorStore();
@@ -326,6 +331,75 @@ const onDrop = (e: DragEvent) => {
 const applyImageTemplateSize = (widthCm: number, heightCm: number) => {
     emit("update-image-size", widthCm, heightCm);
 };
+
+// State Modal Crop Gambar
+const isCropModalOpen = ref(false);
+const imageToCropUrl = ref("");
+const imageToCropName = ref("");
+const imageToCropId = ref<string | null>(null);
+
+// State Rotasi Objek Presisi
+const objectRotation = ref(0);
+
+const openCropForUpload = (img: { id: string; name: string; dataUrl: string }) => {
+    imageToCropUrl.value = img.dataUrl;
+    imageToCropName.value = img.name;
+    imageToCropId.value = img.id;
+    isCropModalOpen.value = true;
+};
+
+const openCropForSelected = () => {
+    if (props.selectedObject && props.selectedObject.type === "image") {
+        const element = props.selectedObject.getElement();
+        if (element && element.src) {
+            imageToCropUrl.value = element.src;
+            imageToCropName.value = "desain-canvas-cropped.png";
+            imageToCropId.value = "selected-canvas-image";
+            isCropModalOpen.value = true;
+        }
+    }
+};
+
+const handleCropComplete = (croppedDataUrl: string) => {
+    isCropModalOpen.value = false;
+
+    if (imageToCropId.value === "selected-canvas-image") {
+        emit("crop-selected-image", croppedDataUrl);
+    } else {
+        const croppedName = imageToCropName.value.replace(/(\.[\w\d]+)$/, "-cropped$1");
+        const estimatedSize = Math.round(croppedDataUrl.length * 0.75);
+
+        store.addUploadedImage(
+            croppedName,
+            croppedDataUrl,
+            estimatedSize,
+            estimatedSize,
+        );
+
+        emit("add-image", croppedDataUrl);
+    }
+};
+
+const handleRotationChange = () => {
+    // Batasi nilai agar tetap 0 - 360
+    let cleanRot = parseInt(objectRotation.value as any);
+    if (isNaN(cleanRot)) cleanRot = 0;
+    cleanRot = ((cleanRot % 360) + 360) % 360;
+    objectRotation.value = cleanRot;
+    emit("update-rotation", cleanRot);
+};
+
+watch(
+    () => props.selectedObjectRotation,
+    (newRot) => {
+        if (newRot !== undefined) {
+            objectRotation.value = newRot;
+        } else {
+            objectRotation.value = 0;
+        }
+    },
+    { immediate: true },
+);
 </script>
 
 <template>
@@ -384,6 +458,37 @@ const applyImageTemplateSize = (widthCm: number, heightCm: number) => {
                         <span>Hapus</span>
                     </button>
                 </div>
+                
+                <!-- Kontrol Rotasi Akurat (Untuk Semua Tipe Objek Terpilih) -->
+                <div class="space-y-1.5 pt-3 border-t border-sky-100/50 dark:border-slate-800/80">
+                    <div class="flex justify-between items-center text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider pl-1">
+                        <span>Rotasi Objek:</span>
+                        <span class="font-mono text-sky-600 dark:text-sky-400 font-bold">{{ objectRotation }}°</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <input
+                            type="range"
+                            v-model.number="objectRotation"
+                            @input="handleRotationChange"
+                            min="0"
+                            max="360"
+                            step="1"
+                            class="flex-grow accent-sky-600 bg-slate-200 dark:bg-slate-800 h-1.5 rounded-lg cursor-pointer transition-all"
+                        />
+                        <div class="flex items-center">
+                            <input
+                                type="number"
+                                v-model.number="objectRotation"
+                                @input="handleRotationChange"
+                                min="0"
+                                max="360"
+                                step="1"
+                                class="w-11 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center rounded-lg py-0.5 text-[9.5px] font-mono font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                            />
+                            <span class="text-[10px] font-bold text-slate-400 dark:text-slate-500 ml-0.5">°</span>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Pengaturan Ukuran Template Gambar (Hanya muncul jika objek terpilih berupa Gambar) -->
                 <div
@@ -419,6 +524,18 @@ const applyImageTemplateSize = (widthCm: number, heightCm: number) => {
                     >
                         * Skala gambar akan disesuaikan secara proporsional sesuai rasio asli (bebas distorsi).
                     </span>
+                    
+                    <!-- Tombol Potong Gambar di Kanvas -->
+                    <div class="pt-2">
+                        <button
+                            @click="openCropForSelected"
+                            class="w-full py-2 px-3 rounded-xl bg-sky-600/10 hover:bg-sky-600 border border-sky-200/50 dark:border-slate-800 text-sky-700 dark:text-sky-400 hover:text-white dark:hover:text-white font-bold text-xs transition-all duration-300 flex items-center justify-center gap-1.5 hover:scale-102 active:scale-98 cursor-pointer"
+                            type="button"
+                        >
+                            <PhCrop :size="13" weight="bold" />
+                            <span>Potong Gambar (Crop)</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </Transition>
@@ -1263,17 +1380,26 @@ const applyImageTemplateSize = (widthCm: number, heightCm: number) => {
                                                 }}</span
                                             >
                                         </div>
-                                        <button
-                                            @click.stop="
-                                                store.removeUploadedImage(
-                                                    img.id,
-                                                )
-                                            "
-                                            class="absolute top-0.5 right-0.5 bg-red-50 dark:bg-slate-900 border border-red-200 dark:border-slate-800 p-0.5 rounded-md text-red-600 dark:text-red-400 hover:bg-red-100 transition-all opacity-0 group-hover/thumb:opacity-100 z-10"
-                                            type="button"
-                                        >
-                                            <PhTrash :size="8" />
-                                        </button>
+                                         <button
+                                             @click.stop="openCropForUpload(img)"
+                                             class="absolute top-1 left-1 bg-sky-50/90 dark:bg-slate-900/90 border border-sky-200 dark:border-slate-800 p-1.5 rounded-lg text-sky-600 dark:text-sky-400 hover:bg-sky-100 transition-all opacity-100 lg:opacity-0 lg:group-hover/thumb:opacity-100 z-10 shadow-sm"
+                                             type="button"
+                                             title="Potong Gambar (Crop)"
+                                         >
+                                             <PhCrop :size="12" />
+                                         </button>
+                                         
+                                         <button
+                                             @click.stop="
+                                                 store.removeUploadedImage(
+                                                     img.id,
+                                                 )
+                                             "
+                                             class="absolute top-1 right-1 bg-red-50/90 dark:bg-slate-900/90 border border-red-200 dark:border-slate-800 p-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-100 transition-all opacity-100 lg:opacity-0 lg:group-hover/thumb:opacity-100 z-10 shadow-sm"
+                                             type="button"
+                                         >
+                                             <PhTrash :size="12" />
+                                         </button>
                                     </div>
                                 </div>
                             </div>
@@ -1868,6 +1994,14 @@ const applyImageTemplateSize = (widthCm: number, heightCm: number) => {
                 </div>
             </div>
         </Transition>
+        
+        <!-- Modal Pemotong Gambar -->
+        <ImageCropperModal
+            :show="isCropModalOpen"
+            :image-url="imageToCropUrl"
+            @close="isCropModalOpen = false"
+            @crop="handleCropComplete"
+        />
     </div>
 </template>
 

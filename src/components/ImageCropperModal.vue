@@ -13,6 +13,7 @@ import {
     PhArrowCounterClockwise as PhReset,
     PhCheck,
     PhX,
+    PhArrowsOutCardinal,
 } from "@phosphor-icons/vue";
 
 const props = defineProps<{
@@ -29,6 +30,9 @@ const imageRef = ref<HTMLImageElement | null>(null);
 let cropper: Cropper | null = null;
 const isFlipH = ref(false);
 const isFlipV = ref(false);
+const rotateValue = ref(0); // Sudut rotasi halus (-180 sampai 180)
+const currentAspectRatio = ref<number | null>(null); // null = Bebas (Free)
+const dragMode = ref<'crop' | 'move'>('crop');
 
 const initCropper = () => {
     if (!imageRef.value) return;
@@ -40,7 +44,8 @@ const initCropper = () => {
     }
 
     cropper = new Cropper(imageRef.value, {
-        aspectRatio: NaN, // Bebas memotong ukuran apa saja (free crop)
+        aspectRatio: currentAspectRatio.value === null ? NaN : currentAspectRatio.value,
+        dragMode: dragMode.value,
         viewMode: 1, // Membatasi crop box di dalam area gambar
         autoCropArea: 0.8, // Ukuran awal kotak crop
         responsive: true,
@@ -61,6 +66,9 @@ watch(
         if (isOpen) {
             isFlipH.value = false;
             isFlipV.value = false;
+            rotateValue.value = 0;
+            currentAspectRatio.value = null;
+            dragMode.value = "crop";
             nextTick(() => {
                 initCropper();
             });
@@ -78,6 +86,7 @@ watch(
     () => props.imageUrl,
     () => {
         if (props.show) {
+            rotateValue.value = 0;
             nextTick(() => {
                 initCropper();
             });
@@ -92,8 +101,35 @@ onUnmounted(() => {
 });
 
 // Aksi kontrol Cropper
-const rotateRight = () => cropper?.rotate(90);
-const rotateLeft = () => cropper?.rotate(-90);
+const rotateRight90 = () => {
+    if (!cropper) return;
+    let newAngle = (rotateValue.value + 90) % 360;
+    if (newAngle > 180) newAngle -= 360;
+    if (newAngle < -180) newAngle += 360;
+    rotateValue.value = newAngle;
+    cropper.rotateTo(rotateValue.value);
+};
+
+const rotateLeft90 = () => {
+    if (!cropper) return;
+    let newAngle = (rotateValue.value - 90) % 360;
+    if (newAngle > 180) newAngle -= 360;
+    if (newAngle < -180) newAngle += 360;
+    rotateValue.value = newAngle;
+    cropper.rotateTo(rotateValue.value);
+};
+
+const handleRotateInput = (val: number) => {
+    if (!cropper) return;
+    // Batasi input antara -180 dan 180
+    let cleanVal = parseFloat(val as any);
+    if (isNaN(cleanVal)) cleanVal = 0;
+    if (cleanVal > 180) cleanVal = 180;
+    if (cleanVal < -180) cleanVal = -180;
+    rotateValue.value = cleanVal;
+    cropper.rotateTo(rotateValue.value);
+};
+
 const zoomIn = () => cropper?.zoom(0.1);
 const zoomOut = () => cropper?.zoom(-0.1);
 
@@ -109,11 +145,27 @@ const flipVertical = () => {
     cropper.scaleY(isFlipV.value ? -1 : 1);
 };
 
+const setAspectRatio = (ratio: number | null) => {
+    if (!cropper) return;
+    cropper.setAspectRatio(ratio === null ? NaN : ratio);
+    currentAspectRatio.value = ratio;
+};
+
+const setDragMode = (mode: 'crop' | 'move') => {
+    if (!cropper || dragMode.value === mode) return;
+    cropper.setDragMode(mode);
+    dragMode.value = mode;
+};
+
 const reset = () => {
     if (!cropper) return;
     cropper.reset();
     isFlipH.value = false;
     isFlipV.value = false;
+    rotateValue.value = 0;
+    setAspectRatio(null);
+    cropper.setDragMode("crop");
+    dragMode.value = "crop";
 };
 
 const applyCrop = () => {
@@ -145,12 +197,12 @@ const applyCrop = () => {
     >
         <div
             v-if="show"
-            class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md"
+            class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-955/80 backdrop-blur-md"
             @click.self="emit('close')"
         >
-            <!-- Panel Dialog Modal -->
+            <!-- Panel Dialog Modal (max-w-4xl untuk ruang kerja yang luas) -->
             <div
-                class="bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
+                class="bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200"
             >
                 <!-- Header Modal -->
                 <div
@@ -161,7 +213,7 @@ const applyCrop = () => {
                             <PhCrop :size="16" weight="bold" />
                         </div>
                         <h3 class="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                            Potong Gambar (Crop)
+                            Potong & Atur Gambar
                         </h3>
                     </div>
                     <button
@@ -173,84 +225,186 @@ const applyCrop = () => {
                     </button>
                 </div>
 
-                <!-- Area Preview Gambar & Cropper -->
-                <div class="flex-grow p-6 overflow-hidden flex items-center justify-center bg-slate-950 dark:bg-slate-955 min-h-[300px] max-h-[50vh] relative">
-                    <div class="w-full h-full max-h-[40vh] flex items-center justify-center">
-                        <img
-                            ref="imageRef"
-                            :src="imageUrl"
-                            class="max-w-full max-h-full opacity-0"
-                            style="display: block; max-width: 100%;"
-                        />
-                    </div>
+                <!-- Area Preview Gambar & Cropper (Fleksibel & mencegah terpotong) -->
+                <div class="flex-grow flex-shrink min-h-0 h-[320px] md:h-[480px] p-4 md:p-6 overflow-hidden flex items-center justify-center bg-slate-950 dark:bg-slate-955 relative">
+                    <img
+                        ref="imageRef"
+                        :src="imageUrl"
+                        class="max-w-full max-h-full opacity-0"
+                        style="display: block; max-width: 100%;"
+                    />
                 </div>
 
                 <!-- Bilah Alat Kontrol (Cropper Toolbar) -->
                 <div
-                    class="p-3 border-t border-sky-100/50 dark:border-slate-800/60 flex flex-wrap items-center justify-center gap-1.5 bg-slate-50/30 dark:bg-slate-955/20"
+                    class="p-3.5 border-t border-sky-100/50 dark:border-slate-800/60 flex flex-wrap items-center justify-center gap-3 bg-slate-50/30 dark:bg-slate-955/20"
                 >
-                    <button
-                        @click="rotateLeft"
-                        class="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-slate-800 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer"
-                        title="Putar Kiri (-90°)"
-                        type="button"
-                    >
-                        <PhArrowCounterClockwise :size="14" weight="bold" />
-                    </button>
-                    <button
-                        @click="rotateRight"
-                        class="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-slate-800 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer"
-                        title="Putar Kanan (90°)"
-                        type="button"
-                    >
-                        <PhArrowClockwise :size="14" weight="bold" />
-                    </button>
+                    <!-- Pilihan Mode Drag (Geser Gambar vs Gambar Kotak Potongan) -->
+                    <div class="flex items-center bg-white dark:bg-slate-900 rounded-xl border border-sky-100/60 dark:border-slate-800 p-0.5 shadow-sm">
+                        <button
+                            @click="setDragMode('crop')"
+                            class="px-3 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer flex items-center gap-1"
+                            :class="dragMode === 'crop' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-850 dark:hover:text-slate-200'"
+                            title="Mode Potong (Ubah ukuran kotak potongan)"
+                            type="button"
+                        >
+                            <PhCrop :size="12" weight="bold" />
+                            <span>Potong</span>
+                        </button>
+                        <button
+                            @click="setDragMode('move')"
+                            class="px-3 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer flex items-center gap-1"
+                            :class="dragMode === 'move' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-850 dark:hover:text-slate-200'"
+                            title="Mode Geser (Geser atau perbesar gambar)"
+                            type="button"
+                        >
+                            <PhArrowsOutCardinal :size="12" weight="bold" />
+                            <span>Geser</span>
+                        </button>
+                    </div>
 
-                    <div class="w-[1px] h-5 bg-slate-200 dark:bg-slate-800 mx-1"></div>
+                    <div class="w-[1px] h-5 bg-slate-200 dark:bg-slate-800 mx-0.5 hidden lg:block"></div>
 
-                    <button
-                        @click="zoomIn"
-                        class="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-slate-800 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer"
-                        title="Perbesar"
-                        type="button"
-                    >
-                        <PhMagnifyingGlassPlus :size="14" weight="bold" />
-                    </button>
-                    <button
-                        @click="zoomOut"
-                        class="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-slate-800 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer"
-                        title="Perkecil"
-                        type="button"
-                    >
-                        <PhMagnifyingGlassMinus :size="14" weight="bold" />
-                    </button>
+                    <!-- Aspek Rasio Potongan (Aspect Ratio Presets) -->
+                    <div class="flex items-center bg-white dark:bg-slate-900 rounded-xl border border-sky-100/60 dark:border-slate-800 p-0.5 shadow-sm">
+                        <span class="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 px-2">Rasio:</span>
+                        <div class="flex gap-0.5">
+                            <button
+                                @click="setAspectRatio(null)"
+                                class="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer"
+                                :class="currentAspectRatio === null ? 'bg-sky-100 dark:bg-sky-950/50 text-sky-700 dark:text-sky-400' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'"
+                                type="button"
+                            >
+                                Bebas
+                            </button>
+                            <button
+                                @click="setAspectRatio(1)"
+                                class="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer"
+                                :class="currentAspectRatio === 1 ? 'bg-sky-100 dark:bg-sky-950/50 text-sky-700 dark:text-sky-400' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'"
+                                type="button"
+                            >
+                                1:1
+                            </button>
+                            <button
+                                @click="setAspectRatio(4 / 3)"
+                                class="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer"
+                                :class="currentAspectRatio === 4/3 ? 'bg-sky-100 dark:bg-sky-950/50 text-sky-700 dark:text-sky-400' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'"
+                                type="button"
+                            >
+                                4:3
+                            </button>
+                            <button
+                                @click="setAspectRatio(16 / 9)"
+                                class="px-2.5 py-1 text-[10px] font-black rounded-lg transition-all cursor-pointer"
+                                :class="currentAspectRatio === 16/9 ? 'bg-sky-100 dark:bg-sky-950/50 text-sky-700 dark:text-sky-400' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'"
+                                type="button"
+                            >
+                                16:9
+                            </button>
+                        </div>
+                    </div>
 
-                    <div class="w-[1px] h-5 bg-slate-200 dark:bg-slate-800 mx-1"></div>
+                    <div class="w-[1px] h-5 bg-slate-200 dark:bg-slate-800 mx-0.5"></div>
 
-                    <button
-                        @click="flipHorizontal"
-                        class="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-slate-800 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer"
-                        :class="{ 'border-sky-500 bg-sky-50 dark:bg-sky-950/30 text-sky-600': isFlipH }"
-                        title="Balik Horisontal"
-                        type="button"
-                    >
-                        <PhFlipHorizontal :size="14" weight="bold" />
-                    </button>
-                    <button
-                        @click="flipVertical"
-                        class="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-slate-800 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer"
-                        :class="{ 'border-sky-500 bg-sky-50 dark:bg-sky-950/30 text-sky-600': isFlipV }"
-                        title="Balik Vertikal"
-                        type="button"
-                    >
-                        <PhFlipVertical :size="14" weight="bold" />
-                    </button>
+                    <!-- Tombol Putar 90 Derajat -->
+                    <div class="flex gap-1">
+                        <button
+                            @click="rotateLeft90"
+                            class="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-slate-800 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer shadow-sm"
+                            title="Putar Kiri (-90°)"
+                            type="button"
+                        >
+                            <PhArrowCounterClockwise :size="14" weight="bold" />
+                        </button>
+                        <button
+                            @click="rotateRight90"
+                            class="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-slate-800 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer shadow-sm"
+                            title="Putar Kanan (90°)"
+                            type="button"
+                        >
+                            <PhArrowClockwise :size="14" weight="bold" />
+                        </button>
+                    </div>
 
-                    <div class="w-[1px] h-5 bg-slate-200 dark:bg-slate-800 mx-1"></div>
+                    <div class="w-[1px] h-5 bg-slate-200 dark:bg-slate-800 mx-0.5"></div>
+
+                    <!-- Input Rotasi Presisi Slider & Derajat -->
+                    <div class="flex items-center gap-2 bg-white dark:bg-slate-900 px-3 py-1 rounded-xl border border-sky-100/60 dark:border-slate-800 shadow-sm">
+                        <span class="text-[9px] uppercase font-black text-slate-455 dark:text-slate-500">Putar:</span>
+                        <input
+                            type="range"
+                            v-model.number="rotateValue"
+                            @input="handleRotateInput(rotateValue)"
+                            min="-180"
+                            max="180"
+                            step="0.5"
+                            class="w-16 md:w-24 accent-sky-600 cursor-pointer h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg"
+                        />
+                        <div class="flex items-center">
+                            <input
+                                type="number"
+                                v-model.number="rotateValue"
+                                @input="handleRotateInput(rotateValue)"
+                                min="-180"
+                                max="180"
+                                step="0.5"
+                                class="w-11 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center rounded-lg py-0.5 text-[9.5px] font-mono font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                            />
+                            <span class="text-[10px] font-bold text-slate-400 dark:text-slate-500 ml-0.5">°</span>
+                        </div>
+                    </div>
+
+                    <div class="w-[1px] h-5 bg-slate-200 dark:bg-slate-800 mx-0.5"></div>
+
+                    <!-- Pembesaran Gambar (Zoom) -->
+                    <div class="flex gap-1">
+                        <button
+                            @click="zoomIn"
+                            class="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-slate-800 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer shadow-sm"
+                            title="Perbesar"
+                            type="button"
+                        >
+                            <PhMagnifyingGlassPlus :size="14" weight="bold" />
+                        </button>
+                        <button
+                            @click="zoomOut"
+                            class="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-slate-800 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer shadow-sm"
+                            title="Perkecil"
+                            type="button"
+                        >
+                            <PhMagnifyingGlassMinus :size="14" weight="bold" />
+                        </button>
+                    </div>
+
+                    <div class="w-[1px] h-5 bg-slate-200 dark:bg-slate-800 mx-0.5"></div>
+
+                    <!-- Pembalikan Cermin (Flip) -->
+                    <div class="flex gap-1">
+                        <button
+                            @click="flipHorizontal"
+                            class="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-slate-800 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer shadow-sm"
+                            :class="{ 'border-sky-500 bg-sky-50 dark:bg-sky-950/30 text-sky-600': isFlipH }"
+                            title="Balik Horisontal"
+                            type="button"
+                        >
+                            <PhFlipHorizontal :size="14" weight="bold" />
+                        </button>
+                        <button
+                            @click="flipVertical"
+                            class="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-slate-800 hover:bg-sky-50 dark:hover:bg-slate-850 hover:text-sky-600 dark:hover:text-sky-400 flex items-center justify-center transition-all cursor-pointer shadow-sm"
+                            :class="{ 'border-sky-500 bg-sky-50 dark:bg-sky-950/30 text-sky-600': isFlipV }"
+                            title="Balik Vertikal"
+                            type="button"
+                        >
+                            <PhFlipVertical :size="14" weight="bold" />
+                        </button>
+                    </div>
+
+                    <div class="w-[1px] h-5 bg-slate-200 dark:bg-slate-800 mx-0.5"></div>
 
                     <button
                         @click="reset"
-                        class="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-slate-800 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 flex items-center justify-center transition-all cursor-pointer"
+                        class="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-slate-800 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 flex items-center justify-center transition-all cursor-pointer shadow-sm"
                         title="Atur Ulang (Reset)"
                         type="button"
                     >
@@ -258,7 +412,7 @@ const applyCrop = () => {
                     </button>
                 </div>
 
-                <!-- Footer Modal (Tombol Cancel / Apply) -->
+                <!-- Footer Modal (Tombol Batal / Terapkan) -->
                 <div
                     class="p-4 border-t border-sky-100/60 dark:border-slate-800/80 flex justify-end gap-2 bg-slate-50/50 dark:bg-slate-950/30"
                 >
