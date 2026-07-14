@@ -288,12 +288,12 @@ const pxPerCm = computed(() => activeShirtConfig.value.pxPerCm);
 const canvasWidth = computed(() => {
     const sizeData = store.shirtSizes[store.currentSize];
     const margin = activeShirtConfig.value.sideMargin;
-    return (sizeData.width - 2 * margin) * pxPerCm.value;
+    return Math.round((sizeData.width - 2 * margin) * pxPerCm.value);
 });
 
 const canvasHeight = computed(() => {
     const sizeData = store.shirtSizes[store.currentSize];
-    return sizeData.length * pxPerCm.value;
+    return Math.round(sizeData.length * pxPerCm.value);
 });
 
 const canvasTop = computed(() => {
@@ -301,7 +301,7 @@ const canvasTop = computed(() => {
     const sizeData = store.shirtSizes[store.currentSize];
     const diff = (refLength - sizeData.length) * pxPerCm.value;
     const baseTop = activeShirtConfig.value.baseTop;
-    return baseTop + diff * 0.25;
+    return Math.round(baseTop + diff * 0.25);
 });
 
 // Snap Guideline State
@@ -411,13 +411,13 @@ const getPrintableAreaStyle = (view: "front" | "back", size: number) => {
     const margin = config.sideMargin;
 
     // Visual width & height berdasarkan skala kaos
-    const cWidth = (sizeData.width - 2 * margin) * pcm * scale;
-    const cHeight = sizeData.length * pcm * scale;
+    const cWidth = Math.round((sizeData.width - 2 * margin) * pcm * scale);
+    const cHeight = Math.round(sizeData.length * pcm * scale);
 
     const refLength = 71;
     const diff = (refLength - sizeData.length) * pcm;
-    const cTop = (config.baseTop + diff * 0.25) * scale;
-    const offset = (config.leftOffset || 0) * scale;
+    const cTop = Math.round((config.baseTop + diff * 0.25) * scale);
+    const offset = Math.round((config.leftOffset || 0) * scale);
 
     return {
         top: `${cTop}px`,
@@ -640,6 +640,7 @@ const saveCurrentState = () => {
             json: fabricCanvas.toJSON(),
             canvasWidth: fabricCanvas.width,
             canvasHeight: fabricCanvas.height,
+            pxPerCm: pxPerCm.value,
         };
         store.saveCanvasState(displayedView.value, stateObj);
         store.saveToLocalStorage(); // Simpan perubahan ke LocalStorage
@@ -676,7 +677,10 @@ const loadStateForView = async (view: "front" | "back") => {
                 if (oldW !== newW || oldH !== newH) {
                     const scaleX = newW / oldW;
                     const scaleY = newH / oldH;
-                    const objScaleFactor = scaleX;
+                    
+                    const oldPxPerCm = savedData.pxPerCm || pxPerCm.value;
+                    const newPxPerCm = pxPerCm.value;
+                    const objScaleFactor = newPxPerCm / oldPxPerCm;
 
                     fabricCanvas.getObjects().forEach((obj) => {
                         obj.set({
@@ -709,8 +713,8 @@ const resizeCanvas = (view: "front" | "back") => {
     const config = shirtTypeConfigs[store.currentShirtType][view];
     const pcm = config.pxPerCm;
     const margin = config.sideMargin;
-    const newWidth = (sizeData.width - 2 * margin) * pcm;
-    const newHeight = sizeData.length * pcm;
+    const newWidth = Math.round((sizeData.width - 2 * margin) * pcm);
+    const newHeight = Math.round(sizeData.length * pcm);
 
     const oldWidth = fabricCanvas.width;
     const oldHeight = fabricCanvas.height;
@@ -752,6 +756,7 @@ watch(
                     json: fabricCanvas.toJSON(),
                     canvasWidth: fabricCanvas.width,
                     canvasHeight: fabricCanvas.height,
+                    pxPerCm: pxPerCm.value,
                 };
                 store.saveCanvasState(oldView, stateObj);
                 // Perbarui preview transparan di store agar saat mode 'both' dirender, preview terbarunya langsung muncul
@@ -844,7 +849,7 @@ watch(
             ) {
                 const scaleX = newWidth / oldWidth;
                 const scaleY = newHeight / oldHeight;
-                const objScaleFactor = scaleX; // Gunakan rasio lebar untuk mempertahankan aspek rasio sablon
+                const objScaleFactor = 1.0; // Ukuran fisik gambar/teks tetap konstan sewaktu mengganti ukuran kaos
 
                 fabricCanvas.getObjects().forEach((obj) => {
                     obj.set({
@@ -867,7 +872,11 @@ watch(
 // Watcher untuk mendeteksi perubahan jenis kaos agar menyesuaikan gambar mockup, ukuran kanvas, dan skala objek
 watch(
     () => store.currentShirtType,
-    async () => {
+    async (newType, oldType) => {
+        const viewKey = (displayedView.value === "both" ? "front" : displayedView.value) as "front" | "back";
+        const oldConfig = shirtTypeConfigs[oldType][viewKey];
+        const oldPxPerCm = oldConfig ? oldConfig.pxPerCm : pxPerCm.value;
+
         await initMockupImages();
         if (fabricCanvas) {
             const oldWidth = fabricCanvas.width;
@@ -888,7 +897,9 @@ watch(
             ) {
                 const scaleX = newWidth / oldWidth;
                 const scaleY = newHeight / oldHeight;
-                const objScaleFactor = scaleX;
+                
+                const newPxPerCm = pxPerCm.value;
+                const objScaleFactor = newPxPerCm / oldPxPerCm;
 
                 fabricCanvas.getObjects().forEach((obj) => {
                     obj.set({
@@ -1057,8 +1068,8 @@ const getPrintDataUrl = async (view: "front" | "back"): Promise<string> => {
         const config = shirtTypeConfigs[store.currentShirtType][view];
         const pcm = config.pxPerCm;
         const margin = config.sideMargin;
-        const w = (sizeData.width - 2 * margin) * pcm;
-        const h = sizeData.length * pcm;
+        const w = Math.round((sizeData.width - 2 * margin) * pcm);
+        const h = Math.round(sizeData.length * pcm);
         tempCanvasEl.width = w;
         tempCanvasEl.height = h;
 
@@ -1090,7 +1101,10 @@ const getPrintDataUrl = async (view: "front" | "back"): Promise<string> => {
                     if (oldW !== newW || oldH !== newH) {
                         const scaleX = newW / oldW;
                         const scaleY = newH / oldH;
-                        const objScaleFactor = scaleX;
+                        
+                        const oldPxPerCm = savedData.pxPerCm || pcm;
+                        const newPxPerCm = pcm;
+                        const objScaleFactor = newPxPerCm / oldPxPerCm;
 
                         tempCanvas.getObjects().forEach((obj) => {
                             obj.set({
@@ -1367,19 +1381,20 @@ const getMockupDataUrl = async (view: "front" | "back"): Promise<string> => {
                     const sizeData = store.shirtSizes[store.currentSize];
 
                     // Hitung cWidth dan cHeight murni dari konfigurasi sisi (view) yang sedang diproses
-                    const cWidth =
-                        (sizeData.width - 2 * config.sideMargin) * pcm;
-                    const cHeight = sizeData.length * pcm;
+                    const cWidth = Math.round(
+                        (sizeData.width - 2 * config.sideMargin) * pcm
+                    );
+                    const cHeight = Math.round(sizeData.length * pcm);
 
                     // Hitung cLeft murni dengan leftOffset yang sesuai
                     const offset = config.leftOffset || 0;
-                    const cLeft = (500 - cWidth) / 2 + offset;
+                    const cLeft = Math.round((500 - cWidth) / 2 + offset);
 
                     // Gunakan baseTop & diff yang sesuai dengan view
                     const refLength = 71;
                     const diff = (refLength - sizeData.length) * pcm;
                     const baseTop = config.baseTop;
-                    const cTop = baseTop + diff * 0.25;
+                    const cTop = Math.round(baseTop + diff * 0.25);
 
                     ctx.drawImage(
                         canvasImg,
