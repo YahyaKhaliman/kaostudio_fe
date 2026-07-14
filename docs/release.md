@@ -73,5 +73,22 @@ git tag -d v1.0.0
 git push origin --delete v1.0.0
 ```
 
+### Membuat Ulang Tag di Commit Tertentu (Menggeser Tag):
+
+Jika Anda ingin menunjuk ulang tag tersebut ke commit tertentu (bukan commit terbaru di branch utama):
+
+1. Cari kode hash commit tujuan Anda:
+   ```bash
+   git log --oneline
+   ```
+2. Buat ulang tag pada commit tersebut (ganti `<hash-commit>` dengan hash dari log):
+   ```bash
+   git tag v1.0.0 <hash-commit>
+   ```
+3. Push kembali tag baru tersebut ke GitHub:
+   ```bash
+   git push origin v1.0.0
+   ```
+
 > [!WARNING]
 > Menghapus tag setelah dideploy tidak akan membatalkan kode yang sudah terkirim ke VPS secara otomatis. Jika perlu melakukan rollback ke versi sebelumnya di VPS, Anda harus men-push tag versi sebelumnya kembali atau memicu alur build ulang secara manual.
