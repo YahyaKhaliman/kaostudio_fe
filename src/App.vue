@@ -4,7 +4,9 @@ import ConfiguratorCanvas from "./components/configuratorCanvas.vue";
 import ControlPanel from "./components/controlPanel.vue";
 import { PhTShirt, PhQuestion, PhX, PhSun, PhMoon } from "@phosphor-icons/vue";
 import { useConfiguratorStore } from "./stores/configurator";
+import packageJson from "../package.json";
 
+const appVersion = packageJson.version;
 const showGuide = ref(false);
 const store = useConfiguratorStore();
 
@@ -446,7 +448,7 @@ const handleDeselectObject = () => {
                     >
                         <span
                             class="text-[10px] text-slate-450 font-bold uppercase tracking-wider"
-                            >KaoStudio Guide v1.0</span
+                            >KaoStudio Guide v{{ appVersion }}</span
                         >
                         <button
                             @click="showGuide = false"
@@ -465,7 +467,9 @@ const handleDeselectObject = () => {
         >
             <p class="font-medium tracking-wide">
                 &copy; 2026
-                <span class="text-white font-bold">KaoStudio</span>.
+                <span class="text-white font-bold">KaoStudio</span> v{{
+                    appVersion
+                }}
             </p>
         </footer>
     </div>
