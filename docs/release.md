@@ -9,31 +9,37 @@ Dokumen ini menjelaskan langkah-langkah untuk melakukan rilis versi baru pada pr
 Kami menggunakan tag Git dengan format semantic versioning `v*.*.*` (contoh: `v1.0.0`, `v1.1.2`) untuk memicu proses build, rilis, dan deployment otomatis.
 
 ### Langkah 1: Tentukan Versi Rilis
-
 Gunakan aturan Semantic Versioning (SemVer):
-
 - **Major (X.0.0):** Jika ada perubahan besar yang tidak kompatibel dengan versi sebelumnya (breaking changes).
 - **Minor (0.X.0):** Jika ada penambahan fitur baru yang kompatibel dengan versi sebelumnya.
 - **Patch (0.0.X):** Jika ada perbaikan bug yang kompatibel dengan versi sebelumnya.
 
-### Langkah 2: Buat Tag Baru di Lokal
+### Langkah 2: Commit dan Push Perubahan Kode ke Branch Utama
+Sebelum membuat tag versi baru, pastikan seluruh kode terbaru Anda sudah dikomit dan didorong ke branch utama (`main`):
+```bash
+# 1. Tambahkan semua perubahan kode ke staging area
+git add .
 
-Jalankan perintah berikut di terminal proyek Anda untuk membuat tag baru (ganti `v1.0.0` dengan versi yang Anda inginkan):
+# 2. Komit perubahan dengan pesan deskriptif
+git commit -m "feat: tambah fitur baru yang ingin dirilis"
 
+# 3. Push komit ke remote repository
+git push origin main
+```
+
+### Langkah 3: Buat Tag Versi Baru di Lokal
+Jalankan perintah berikut untuk menandai komit terakhir Anda sebagai versi rilis baru (ganti `v1.0.0` dengan nomor versi rilis Anda):
 ```bash
 git tag v1.0.0
 ```
 
-_Catatan: Anda juga bisa menambahkan pesan deskripsi pada tag menggunakan parameter `-a` (annotated tag):_
-
+*Catatan: Anda juga bisa menambahkan pesan deskripsi pada tag menggunakan parameter `-a` (annotated tag):*
 ```bash
-git tag -a v1.0.0 -m "Rilis versi 1.0.0 - Fitur Editor Kaos"
+git tag -a v1.0.0 -m "Rilis versi 1.0.0 - Deskripsi Fitur Rilis"
 ```
 
-### Langkah 3: Push Tag ke GitHub
-
+### Langkah 4: Push Tag ke GitHub
 Dorong tag baru tersebut ke repositori GitHub untuk memicu alur GitHub Actions:
-
 ```bash
 git push origin v1.0.0
 ```
