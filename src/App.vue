@@ -2,13 +2,23 @@
 import { ref, onMounted, onUnmounted } from "vue";
 import ConfiguratorCanvas from "./components/configuratorCanvas.vue";
 import ControlPanel from "./components/controlPanel.vue";
-import { PhTShirt, PhQuestion, PhX, PhSun, PhMoon } from "@phosphor-icons/vue";
+import {
+    PhTShirt,
+    PhQuestion,
+    PhX,
+    PhSun,
+    PhMoon,
+    PhCalculator,
+    PhCheck,
+} from "@phosphor-icons/vue";
 import { useConfiguratorStore } from "./stores/configurator";
 import packageJson from "../package.json";
+import EstimasiHargaModal from "./components/estimasiHarga.vue";
 
 const appVersion = packageJson.version;
 const showGuide = ref(false);
 const store = useConfiguratorStore();
+const showPricingEstimation = ref(false);
 
 const isDarkMode = ref(false);
 
@@ -187,6 +197,16 @@ const handleUpdateRotation = (angle: number) => {
             </div>
 
             <div class="flex items-center space-x-2">
+                <!-- Tombol Estimasi Harga -->
+                <button
+                    @click="showPricingEstimation = true"
+                    class="text-sky-800 dark:text-sky-200 hover:text-sky-950 dark:hover:text-white px-4 h-10 rounded-xl border border-sky-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-slate-650 bg-sky-50/85 dark:bg-slate-800/80 hover:bg-sky-100/95 dark:hover:bg-slate-750/90 flex items-center justify-center gap-1.5 shadow-sm active:scale-100 cursor-pointer font-bold text-xs transition-all"
+                    title="Lihat Estimasi Harga Produksi"
+                >
+                    <PhCalculator :size="16" weight="bold" />
+                    <span>Estimasi Harga</span>
+                </button>
+
                 <!-- Tombol Mode Gelap -->
                 <button
                     @click="toggleDarkMode"
@@ -247,10 +267,14 @@ const handleUpdateRotation = (angle: number) => {
             </div>
 
             <!-- Sisi Kanan: Panel Kontrol (Col 8-12) -->
-            <div class="lg:col-span-5 relative w-full max-w-xl lg:max-w-none mx-auto">
+            <div
+                class="lg:col-span-5 relative w-full max-w-xl lg:max-w-none mx-auto"
+            >
                 <ControlPanel
                     :selected-object="canvasRef?.selectedObject"
-                    :selected-object-rotation="canvasRef?.selectedObjectRotation"
+                    :selected-object-rotation="
+                        canvasRef?.selectedObjectRotation
+                    "
                     @add-text="handleAddText"
                     @add-image="handleAddImage"
                     @delete-selected="handleDeleteSelected"
@@ -471,6 +495,13 @@ const handleUpdateRotation = (angle: number) => {
                 </div>
             </div>
         </Transition>
+
+        <!-- Modal Estimasi Harga -->
+        <EstimasiHargaModal
+            :show="showPricingEstimation"
+            :canvas-ref="canvasRef"
+            @close="showPricingEstimation = false"
+        />
 
         <!-- Footer -->
         <footer

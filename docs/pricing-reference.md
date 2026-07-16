@@ -6,6 +6,38 @@
 
 ---
 
+## Keputusan Desain untuk KaoStudio
+
+> **Pendekatan yang dipilih:** Pemisahan harga barang dan jasa (sesuai pola SO/Penawaran di retail)
+
+**Harga Kaos Polos** dan **Harga Jasa Cetak** dipisah menjadi dua komponen independen:
+
+- **Komponen A — Harga Kaos Polos** (per ukuran × qty)
+  - Bisa berdiri sendiri tanpa jasa cetak
+  - Karena ada kasus customer hanya beli kaos polos tanpa sablon/DTF
+- **Komponen B — Harga Jasa Cetak** (per ukuran × qty)
+  - Bersifat **opsional** — hanya muncul jika ada desain di canvas
+  - Dihitung berdasarkan luas area desain dan jenis jasa yang dipilih
+
+```
+Total Estimasi = Σ Harga Kaos Polos  +  Σ Harga Jasa Cetak
+                 (wajib)                (opsional)
+```
+
+Contoh output estimasi (mengikuti pola SO retail):
+
+| Komponen | Nama                        | Ukuran        | Qty    | Harga   | Total         |
+| -------- | --------------------------- | ------------- | ------ | ------- | ------------- |
+| Kaos     | KO POLOS DBF SIGNATURE NAVY | L             | 4      | 112.000 | 448.000       |
+| Kaos     | KO POLOS DBF SIGNATURE NAVY | XL            | 11     | 112.000 | 1.232.000     |
+| Kaos     | KO POLOS DBF SIGNATURE NAVY | 2XL           | 1      | 116.000 | 116.000       |
+| Jasa     | DTF PRESS                   | L             | 4      | 1.400   | 5.600         |
+| Jasa     | DTF PRESS                   | XL            | 11     | 1.400   | 15.400        |
+| Jasa     | DTF PRESS                   | 2XL           | 1      | 1.400   | 1.400         |
+|          |                             | **TOTAL QTY** | **32** |         | **1.818.400** |
+
+---
+
 ## Daftar Isi
 
 1. [Perhitungan Harga Barang (Kaos Polos)](#1-perhitungan-harga-barang-kaos-polos)
@@ -30,11 +62,11 @@ Harga kaos polos dalam sistem retail ditentukan melalui dua pendekatan:
 Setiap varian kaos (kombinasi jenis, tipe, lengan, kain, warna, ukuran) sudah memiliki
 harga yang ditetapkan di database.
 
-| Tabel DB           | Kolom Harga       | Keterangan                        |
-| ------------------ | ----------------- | --------------------------------- |
-| `tbarangdc_dtl`    | `brgd_harga`      | Harga jual retail (cabang biasa)  |
-| `tbarangdc_dtl`    | `brgd_hpp`        | Harga pokok/modal (cabang pusat)  |
-| `tbarangdc_dtl`    | `brgd_hrg3`       | Harga khusus marketplace          |
+| Tabel DB        | Kolom Harga  | Keterangan                       |
+| --------------- | ------------ | -------------------------------- |
+| `tbarangdc_dtl` | `brgd_harga` | Harga jual retail (cabang biasa) |
+| `tbarangdc_dtl` | `brgd_hpp`   | Harga pokok/modal (cabang pusat) |
+| `tbarangdc_dtl` | `brgd_hrg3`  | Harga khusus marketplace         |
 
 **Nama barang** dihasilkan dari gabungan kolom di tabel `tbarangdc`:
 
@@ -49,29 +81,29 @@ Contoh output: `COMBED 30S KAOS LENGAN PENDEK COTTON PUTIH`
 Untuk pesanan custom, harga dasar kaos diambil dari tabel **`tjeniskaos`** yang menyimpan
 harga per ukuran untuk setiap jenis kaos:
 
-| Kolom         | Keterangan          |
-| ------------- | ------------------- |
-| `jk_Jenis`    | Nama jenis kaos     |
-| `jk_custom`   | Flag custom (Y/N)   |
-| `jk_s`        | Harga ukuran S      |
-| `jk_m`        | Harga ukuran M      |
-| `jk_l`        | Harga ukuran L      |
-| `jk_xl`       | Harga ukuran XL     |
-| `jk_2xl`      | Harga ukuran 2XL    |
-| `jk_3xl`      | Harga ukuran 3XL    |
-| `jk_4xl`      | Harga ukuran 4XL    |
-| `jk_5xl`      | Harga ukuran 5XL    |
+| Kolom         | Keterangan            |
+| ------------- | --------------------- |
+| `jk_Jenis`    | Nama jenis kaos       |
+| `jk_custom`   | Flag custom (Y/N)     |
+| `jk_s`        | Harga ukuran S        |
+| `jk_m`        | Harga ukuran M        |
+| `jk_l`        | Harga ukuran L        |
+| `jk_xl`       | Harga ukuran XL       |
+| `jk_2xl`      | Harga ukuran 2XL      |
+| `jk_3xl`      | Harga ukuran 3XL      |
+| `jk_4xl`      | Harga ukuran 4XL      |
+| `jk_5xl`      | Harga ukuran 5XL      |
 | `jk_oversize` | Harga ukuran Oversize |
-| `jk_jumbo`    | Harga ukuran Jumbo  |
+| `jk_jumbo`    | Harga ukuran Jumbo    |
 
 Selain itu terdapat **biaya tambahan** (bordir & DTF) dari tabel `tbiayatambahan`:
 
-| Kolom           | Keterangan                                 |
-| --------------- | ------------------------------------------ |
-| `bt_tambahan`   | Jenis biaya (`BORDIR` / `DTF`)             |
-| `bt_cm`         | Biaya per cm² (digunakan di Pengajuan Harga) |
-| `bt_min`        | Biaya minimum (floor price)                |
-| `bt_harga`      | Harga tetap alternatif                     |
+| Kolom         | Keterangan                                   |
+| ------------- | -------------------------------------------- |
+| `bt_tambahan` | Jenis biaya (`BORDIR` / `DTF`)               |
+| `bt_cm`       | Biaya per cm² (digunakan di Pengajuan Harga) |
+| `bt_min`      | Biaya minimum (floor price)                  |
+| `bt_harga`    | Harga tetap alternatif                       |
 
 ---
 
@@ -82,10 +114,10 @@ Setiap titik cetak (misal: dada depan, punggung, lengan) dihitung terpisah lalu 
 
 ### A. Sablon DTF (Direct to Film) — Kode: `SD`
 
-| Parameter       | Nilai     |
-| --------------- | --------- |
-| Harga per cm²   | **Rp 25** |
-| Size cetak      | Custom (input manual P × L) |
+| Parameter     | Nilai                       |
+| ------------- | --------------------------- |
+| Harga per cm² | **Rp 25**                   |
+| Size cetak    | Custom (input manual P × L) |
 
 **Formula:**
 
@@ -94,6 +126,7 @@ Harga Jasa per Kaos = Σ (Panjang × Lebar × 25) untuk setiap titik cetak
 ```
 
 **Contoh:**
+
 - Titik 1: Dada depan 30×20 cm = 600 cm² × Rp25 = Rp15.000
 - Titik 2: Punggung 40×30 cm = 1.200 cm² × Rp25 = Rp30.000
 - **Total Jasa per Kaos = Rp45.000**
@@ -102,10 +135,10 @@ Harga Jasa per Kaos = Σ (Panjang × Lebar × 25) untuk setiap titik cetak
 
 ### B. DTF Premium — Kode: `DP`
 
-| Parameter       | Nilai     |
-| --------------- | --------- |
-| Harga per cm²   | **Rp 35** |
-| Size cetak      | Custom (input manual P × L) |
+| Parameter     | Nilai                       |
+| ------------- | --------------------------- |
+| Harga per cm² | **Rp 35**                   |
+| Size cetak    | Custom (input manual P × L) |
 
 **Formula:**
 
@@ -132,6 +165,7 @@ Harga Jasa per Kaos = Σ harga flat setiap titik cetak
 ```
 
 **Contoh:**
+
 - Titik 1: Dada depan A4 = Rp20.000
 - Titik 2: Punggung A3 = Rp35.000
 - **Total Jasa per Kaos = Rp55.000**
@@ -142,14 +176,15 @@ Harga Jasa per Kaos = Σ harga flat setiap titik cetak
 
 Harga per cm² **berjenjang (tier)** berdasarkan total kuantitas kaos yang dipesan:
 
-| Total Qty Kaos  | Harga per cm²    |
-| --------------- | ---------------- |
-| ≥ 500 pcs       | **Rp 100**       |
-| ≥ 20 pcs        | **Rp 500**       |
-| ≥ 11 pcs        | **Rp 1.000**     |
-| < 11 pcs        | **Rp 1.500**     |
+| Total Qty Kaos | Harga per cm² |
+| -------------- | ------------- |
+| ≥ 500 pcs      | **Rp 100**    |
+| ≥ 20 pcs       | **Rp 500**    |
+| ≥ 11 pcs       | **Rp 1.000**  |
+| < 11 pcs       | **Rp 1.500**  |
 
 **Aturan Khusus:**
+
 - **Minimum charge per titik bordir**: Rp 5.000
   (Jika hasil kalkulasi < Rp5.000, otomatis dibulatkan naik ke Rp5.000)
 
@@ -161,6 +196,7 @@ Harga Jasa per Kaos = Σ Harga per Titik
 ```
 
 **Contoh (Qty = 24 pcs → Rp500/cm²):**
+
 - Titik 1: Logo dada 5×3 cm = 15 cm² × Rp500 = Rp7.500 → (> Rp5.000, pakai Rp7.500)
 - Titik 2: Label lengan 2×1 cm = 2 cm² × Rp500 = Rp1.000 → (< Rp5.000, **pakai Rp5.000**)
 - **Total Jasa per Kaos = Rp12.500**
@@ -171,10 +207,10 @@ Harga Jasa per Kaos = Σ Harga per Titik
 
 Harga per cm² dipengaruhi oleh **kuantitas** DAN **warna bahan polyflex**:
 
-| Kondisi                    | Warna Gold  | Warna Lainnya |
-| -------------------------- | ----------- | ------------- |
-| **Grosir** (≥ 10 pcs)     | Rp 55 /cm²  | Rp 40 /cm²    |
-| **Eceran** (< 10 pcs)     | Rp 65 /cm²  | Rp 50 /cm²    |
+| Kondisi               | Warna Gold | Warna Lainnya |
+| --------------------- | ---------- | ------------- |
+| **Grosir** (≥ 10 pcs) | Rp 55 /cm² | Rp 40 /cm²    |
+| **Eceran** (< 10 pcs) | Rp 65 /cm² | Rp 50 /cm²    |
 
 **Formula:**
 
@@ -184,6 +220,7 @@ Harga Jasa per Kaos = Σ Harga per Titik
 ```
 
 **Contoh (Qty = 15 pcs, warna biasa → Rp40/cm²):**
+
 - Titik 1: Nama punggung 20×5 cm = 100 cm² × Rp40 = Rp4.000
 - **Total Jasa per Kaos = Rp4.000**
 
@@ -211,14 +248,14 @@ matching otomatis. Tidak menggunakan perkalian per cm² sederhana.
 
 **Tabel Master DTG** (`tukuran_sodtf` WHERE `us_jenis = 'TG'`):
 
-| Kolom         | Keterangan                           |
-| ------------- | ------------------------------------ |
-| `us_ukuran`   | Nama ukuran (A3, A4, TERANG A3, dll) |
-| `us_panjang`  | Panjang area (cm)                    |
-| `us_lebar`    | Lebar area (cm)                      |
-| `us_qty`      | Batas minimum qty untuk harga grosir |
-| `us_promo`    | Harga grosir (jika qty ≥ us_qty)     |
-| `us_harga`    | Harga reguler (jika qty < us_qty)    |
+| Kolom        | Keterangan                           |
+| ------------ | ------------------------------------ |
+| `us_ukuran`  | Nama ukuran (A3, A4, TERANG A3, dll) |
+| `us_panjang` | Panjang area (cm)                    |
+| `us_lebar`   | Lebar area (cm)                      |
+| `us_qty`     | Batas minimum qty untuk harga grosir |
+| `us_promo`   | Harga grosir (jika qty ≥ us_qty)     |
+| `us_harga`   | Harga reguler (jika qty < us_qty)    |
 
 > **Catatan:** Harga DTG bersifat dinamis dan bergantung sepenuhnya pada data master
 > di database. Tidak ada rumus hardcoded di sisi kode.
@@ -246,13 +283,13 @@ Rumus umum untuk menghitung estimasi harga per kaos dan total transaksi:
 
 **Skenario:** 24 pcs Kaos Combed 30s ukuran L, Sablon DTF 2 titik
 
-| Komponen               | Perhitungan                            | Harga      |
-| ----------------------- | -------------------------------------- | ---------- |
-| Kaos Polos (L)          | Dari tabel `tjeniskaos`                | Rp 40.000  |
-| Sablon DTF — Dada       | 30 × 20 cm = 600 cm² × Rp25           | Rp 15.000  |
-| Sablon DTF — Punggung   | 40 × 30 cm = 1.200 cm² × Rp25         | Rp 30.000  |
-| **Harga per Kaos**      |                                        | **Rp 85.000** |
-| **Total (24 pcs)**      | Rp85.000 × 24                          | **Rp 2.040.000** |
+| Komponen              | Perhitungan                   | Harga            |
+| --------------------- | ----------------------------- | ---------------- |
+| Kaos Polos (L)        | Dari tabel `tjeniskaos`       | Rp 40.000        |
+| Sablon DTF — Dada     | 30 × 20 cm = 600 cm² × Rp25   | Rp 15.000        |
+| Sablon DTF — Punggung | 40 × 30 cm = 1.200 cm² × Rp25 | Rp 30.000        |
+| **Harga per Kaos**    |                               | **Rp 85.000**    |
+| **Total (24 pcs)**    | Rp85.000 × 24                 | **Rp 2.040.000** |
 
 ---
 
@@ -262,20 +299,20 @@ Berikut adalah file-file sumber yang mengandung logika perhitungan harga tersebu
 
 ### Backend (`retail_backend`)
 
-| File | Fungsi/Logika |
-| ---- | ------------- |
-| `src/services/settingHargaService.js` | CRUD harga kaos per jenis & ukuran (tabel `tjeniskaos`) |
-| `src/services/soDtfFormService.js` → `calculateDtgPrice()` | Kalkulasi harga DTG dari tabel master `tukuran_sodtf` |
+| File                                                                  | Fungsi/Logika                                                        |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `src/services/settingHargaService.js`                                 | CRUD harga kaos per jenis & ukuran (tabel `tjeniskaos`)              |
+| `src/services/soDtfFormService.js` → `calculateDtgPrice()`            | Kalkulasi harga DTG dari tabel master `tukuran_sodtf`                |
 | `src/services/priceProposalFormService.js` → `getTshirtTypeDetails()` | Ambil harga kaos + biaya tambahan (bordir/DTF dari `tbiayatambahan`) |
-| `src/services/invoiceFormService.js` → `searchProducts()` | Pencarian barang jadi + harga dari `tbarangdc_dtl` |
+| `src/services/invoiceFormService.js` → `searchProducts()`             | Pencarian barang jadi + harga dari `tbarangdc_dtl`                   |
 
 ### Frontend (`retail_frontend`)
 
-| File | Fungsi/Logika |
-| ---- | ------------- |
-| `src/components/modal/JenisOrderModal.vue` → `calculatePrices()` | **Logika utama** perhitungan harga jasa (SD, DP, SB, BR, PL, TG) |
+| File                                                                              | Fungsi/Logika                                                    |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `src/components/modal/JenisOrderModal.vue` → `calculatePrices()`                  | **Logika utama** perhitungan harga jasa (SD, DP, SB, BR, PL, TG) |
 | `src/views/transaksi/penjualan/PriceProposalCreateView.vue` → `calculateTotals()` | Kalkulasi total pengajuan harga (kaos + bordir + DTF + tambahan) |
-| `src/views/transaksi/penjualan/SettingHargaView.vue` | UI setting harga kaos per jenis & ukuran |
+| `src/views/transaksi/penjualan/SettingHargaView.vue`                              | UI setting harga kaos per jenis & ukuran                         |
 
 ---
 

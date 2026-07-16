@@ -26,7 +26,7 @@ import {
 import { compressImage, formatBytes } from "../utils/imageCompressor";
 import { presetColors, companyColors, type ColorItem } from "../utils/colors";
 import sizeChartImg from "../assets/images/size_chart.png";
-import ImageCropperModal from "./ImageCropperModal.vue";
+import ImageCropperModal from "./imageCropperModal.vue";
 
 const props = defineProps<{
     selectedObject: any;
