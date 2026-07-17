@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
 import { useConfiguratorStore } from "../stores/configurator";
+import { fetchKalkulasiHarga } from "../services/api";
 import {
     PhX,
     PhCalculator,
@@ -229,8 +230,94 @@ const servicePrices = computed(() => {
     };
 });
 
+// --- BACKEND API INTEGRATION ---
+const backendBillingRows = ref<any[]>([]);
+const backendGrandTotal = ref(0);
+const backendActiveShirtLabel = ref("");
+const isUsingBackend = ref(false);
+const kalkulasiLoading = ref(false);
+const backendError = ref<string | null>(null);
+
+const fetchBackendKalkulasi = async () => {
+    if (!props.show) return;
+
+    kalkulasiLoading.value = true;
+    backendError.value = null; // Reset error saat hit kalkulasi baru
+    try {
+        const payload = {
+            jenisKaos: store.currentShirtType,
+            warnaKaos: store.shirtColor,
+            qtyS: qtyS.value,
+            qtyM: qtyM.value,
+            qtyL: qtyL.value,
+            qtyXL: qtyXL.value,
+            qtyXXL: qtyXXL.value,
+            qtyXXXL: qtyXXXL.value,
+            qtyPrintS: qtyPrintS.value,
+            qtyPrintM: qtyPrintM.value,
+            qtyPrintL: qtyPrintL.value,
+            qtyPrintXL: qtyPrintXL.value,
+            qtyPrintXXL: qtyPrintXXL.value,
+            qtyPrintXXXL: qtyPrintXXXL.value,
+            selectedService: selectedService.value,
+            frontDimensions: frontDimensions.value,
+            backDimensions: backDimensions.value,
+            isPolyflexGold: isPolyflexGold.value,
+        };
+
+        const data = await fetchKalkulasiHarga(payload);
+
+        backendBillingRows.value = data.billingRows;
+        backendGrandTotal.value = data.subtotal;
+        backendActiveShirtLabel.value = data.activeShirtLabel;
+        isUsingBackend.value = true;
+    } catch (e: any) {
+        console.warn(
+            "Gagal terhubung ke backend API, menggunakan kalkulasi lokal:",
+            e,
+        );
+        isUsingBackend.value = false;
+
+        // Tangkap pesan error spesifik dari response backend
+        const msg = e.response?.data?.message || e.message || "Jenis kaos tersebut tidak ditemukan di database.";
+        backendError.value = `${msg} Silakan hubungi admin.`;
+    } finally {
+        setTimeout(() => {
+            kalkulasiLoading.value = false;
+        }, 300);
+    }
+};
+
+watch(
+    [
+        qtyS,
+        qtyM,
+        qtyL,
+        qtyXL,
+        qtyXXL,
+        qtyXXXL,
+        qtyPrintS,
+        qtyPrintM,
+        qtyPrintL,
+        qtyPrintXL,
+        qtyPrintXXL,
+        qtyPrintXXXL,
+        selectedService,
+        isPolyflexGold,
+        frontDimensions,
+        backDimensions,
+        () => store.currentShirtType,
+        () => store.shirtColor,
+        () => props.show,
+    ],
+    () => {
+        fetchBackendKalkulasi();
+    },
+    { deep: true, immediate: true },
+);
+
 // Perhitungan Rincian Tabel
-const billingRows = computed(() => {
+const localBillingRows = computed(() => {
     const list: {
         type: "kaos" | "jasa";
         nama: string;
@@ -305,9 +392,18 @@ const billingRows = computed(() => {
     return list;
 });
 
+// Perhitungan Rincian Tabel Utama (Pilih backend jika tersedia)
+const billingRows = computed(() => {
+    return isUsingBackend.value
+        ? backendBillingRows.value
+        : localBillingRows.value;
+});
+
 // Grand Total Harga
 const grandTotal = computed(() => {
-    return billingRows.value.reduce((sum, row) => sum + row.total, 0);
+    return isUsingBackend.value
+        ? backendGrandTotal.value
+        : billingRows.value.reduce((sum: number, row: any) => sum + row.total, 0);
 });
 
 // --- METHODS ---
@@ -1223,9 +1319,36 @@ watch(
                             Rincian Pembayaran
                         </span>
 
+                        <!-- Banner Error Backend -->
                         <div
-                            class="border border-sky-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm bg-white dark:bg-slate-950/20 flex-grow flex flex-col"
+                            v-if="backendError"
+                            class="p-3 bg-red-50 dark:bg-red-955/15 border border-red-200/60 dark:border-red-900/40 rounded-2xl flex items-start gap-2.5 text-xs text-red-700 dark:text-red-400 font-medium animate-in fade-in duration-200"
                         >
+                            <PhInfo :size="16" class="mt-0.5 flex-shrink-0 text-red-500 dark:text-red-400" />
+                            <div>
+                                <span class="font-black uppercase text-[9.5px] tracking-wider block mb-0.5 text-red-800 dark:text-red-300">
+                                    Peringatan Sistem
+                                </span>
+                                {{ backendError }}
+                            </div>
+                        </div>
+
+                        <div
+                            class="relative border border-sky-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm bg-white dark:bg-slate-950/20 flex-grow flex flex-col min-h-[150px]"
+                        >
+                            <!-- Loading Overlay Kalkulasi -->
+                            <div
+                                v-if="kalkulasiLoading"
+                                class="absolute inset-0 bg-white/75 dark:bg-slate-900/75 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center gap-2.5 animate-in fade-in duration-200"
+                            >
+                                <div class="relative flex items-center justify-center">
+                                    <div class="w-8 h-8 rounded-full border-4 border-sky-500/20 border-t-sky-500 animate-spin"></div>
+                                    <PhCalculator :size="14" class="absolute text-sky-500 animate-pulse" />
+                                </div>
+                                <span class="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest animate-pulse">
+                                    Menghitung estimasi harga...
+                                </span>
+                            </div>
                             <table
                                 class="w-full text-xs text-left border-collapse"
                             >
