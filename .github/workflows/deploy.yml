@@ -30,6 +30,8 @@ jobs:
           node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json')); pkg.version = '$VERSION'; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');"
 
       - name: Build project
+        env:
+          VITE_API_BASE_URL: "/api"
         run: npm run build
 
       - name: Create GitHub Release
