@@ -674,7 +674,33 @@ const loadStateForView = async (view: "front" | "back") => {
                 "json" in savedData;
             const jsonState = hasWrapper ? savedData.json : savedData;
 
-            await fabricCanvas.loadFromJSON(jsonState);
+            // Pastikan setiap objek gambar di dalam JSON memiliki crossOrigin = 'anonymous' SEBELUM dimuat oleh Fabric
+            const injectCrossOriginToJSON = (obj: any): any => {
+                if (!obj || typeof obj !== "object") return obj;
+                if (Array.isArray(obj)) return obj.map(injectCrossOriginToJSON);
+                const copy = { ...obj };
+                if (copy.type === "image" || copy.src) {
+                    copy.crossOrigin = "anonymous";
+                }
+                if (copy.objects && Array.isArray(copy.objects)) {
+                    copy.objects = copy.objects.map(injectCrossOriginToJSON);
+                }
+                return copy;
+            };
+
+            const safeJsonState = injectCrossOriginToJSON(jsonState);
+
+            await fabricCanvas.loadFromJSON(safeJsonState);
+
+            // Mencegah tainted canvas dengan menyetel crossOrigin = 'anonymous' pada semua objek gambar
+            fabricCanvas.getObjects().forEach((obj: any) => {
+                if (obj.type === "image" || obj._element) {
+                    if (obj._element) {
+                        obj._element.crossOrigin = "anonymous";
+                    }
+                    obj.set("crossOrigin", "anonymous");
+                }
+            });
 
             // Jika ada metadata dimensi kanvas tersimpan dan berbeda dengan dimensi saat ini,
             // lakukan penskalaan letak dan ukuran objek agar tetap presisi
@@ -976,12 +1002,14 @@ const addImage = (source: File | string) => {
 
     const loadAndAddToCanvas = (url: string) => {
         const imgEl = new Image();
+        imgEl.crossOrigin = "anonymous";
         imgEl.onload = () => {
             const fabricImg = new FabricImage(imgEl, {
                 left: fabricCanvas!.width / 2,
                 top: fabricCanvas!.height / 2,
                 originX: "center",
                 originY: "center",
+                crossOrigin: "anonymous",
             });
 
             // Hitung skala agar tidak terlalu besar
@@ -1094,8 +1122,23 @@ const getPrintDataUrl = async (view: "front" | "back"): Promise<string> => {
             savedData && typeof savedData === "object" && "json" in savedData;
         const jsonState = hasWrapper ? savedData.json : savedData;
 
+        const injectCrossOriginToJSON = (obj: any): any => {
+            if (!obj || typeof obj !== "object") return obj;
+            if (Array.isArray(obj)) return obj.map(injectCrossOriginToJSON);
+            const copy = { ...obj };
+            if (copy.type === "image" || copy.src) {
+                copy.crossOrigin = "anonymous";
+            }
+            if (copy.objects && Array.isArray(copy.objects)) {
+                copy.objects = copy.objects.map(injectCrossOriginToJSON);
+            }
+            return copy;
+        };
+
+        const safeJsonState = injectCrossOriginToJSON(jsonState);
+
         tempCanvas
-            .loadFromJSON(jsonState)
+            .loadFromJSON(safeJsonState)
             .then(() => {
                 // Skalakan objek tempCanvas secara fisik jika dimensi tersimpan berbeda dengan dimensi ekspor target
                 if (
@@ -1153,6 +1196,8 @@ const mergeImagesSideBySide = (
     return new Promise((resolve) => {
         const img1 = new Image();
         const img2 = new Image();
+        img1.crossOrigin = "anonymous";
+        img2.crossOrigin = "anonymous";
         let loadedCount = 0;
 
         const onImageLoad = async () => {
@@ -1678,16 +1723,19 @@ const updateSelectedRotation = (angle: number) => {
 };
 
 defineExpose({
+    fabricCanvas,
+    selectedObject,
+    selectedObjectRotation,
+    saveCurrentState,
+    loadStateForView,
+    initMockupImages,
+    exportMockup,
+    exportPrint,
     addText,
     addImage,
     deleteSelected,
     bringToFront,
     sendToBack,
-    exportPrint,
-    exportMockup,
-    selectedObject,
-    selectedObjectRotation,
-    fabricCanvas,
     updateSelectedText,
     updateSelectedColor,
     updateSelectedFont,

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
 import { useConfiguratorStore } from "../stores/configurator";
-import { fetchKalkulasiHarga } from "../services/api";
+import { useAuthStore } from "../stores/authStore";
+import { fetchKalkulasiHarga, saveMockupDesign } from "../services/api";
+import PenawaranFormModal from "./penawaranFormModal.vue";
+import LoginModal from "./loginModal.vue";
 import {
     PhX,
     PhCalculator,
@@ -11,6 +14,8 @@ import {
     PhFileText,
     PhArrowsOut,
     PhInfo,
+    PhWhatsappLogo,
+    PhSpinner,
 } from "@phosphor-icons/vue";
 
 const props = defineProps<{
@@ -24,6 +29,7 @@ const emit = defineEmits<{
 }>();
 
 const store = useConfiguratorStore();
+const authStore = useAuthStore();
 
 // --- STATE ---
 const loading = ref(false);
@@ -57,9 +63,24 @@ const syncPrintQties = () => {
     qtyPrintXXXL.value = qtyXXXL.value;
 };
 
-// Jenis Jasa terpilih
-// Jasa: 'none' | 'SD' (DTF) | 'DP' (DTF Premium) | 'SB' (Plastisol) | 'BR' (Bordir) | 'PL' (Polyflex) | 'TG' (DTG)
-const selectedService = ref<string>("SD");
+export interface DesignItem {
+    id: string;
+    side: "front" | "back";
+    type: "text" | "image";
+    label: string;
+    width: number;
+    height: number;
+    area: number;
+    service: string;
+}
+
+// Jenis Jasa terpilih per objek/item desain
+const selectedService = ref<string>("none");
+const frontService = ref<string>("none");
+const backService = ref<string>("none");
+
+const designItems = ref<DesignItem[]>([]);
+const designServiceMap = ref<Record<string, string>>({});
 
 // Detail Warna Polyflex jika PL terpilih
 const isPolyflexGold = ref(false);
@@ -139,89 +160,58 @@ const totalPrintQty = computed(() => {
 
 // Harga Jasa Satuan Depan & Belakang per pcs kaos
 const servicePrices = computed(() => {
-    const qty = totalPrintQty.value || 1; // Cegah pembagian dengan nol, minimal tier 1
-    const service = selectedService.value;
+    const qty = totalPrintQty.value || 1;
 
-    let frontUnit = 0;
-    let backUnit = 0;
+    const calcSingleSidePrice = (
+        service: string,
+        dim: typeof frontDimensions.value,
+    ) => {
+        if (service === "none" || dim.area <= 0) return 0;
 
-    if (service === "none") {
-        return { front: 0, back: 0, total: 0 };
-    }
-
-    // A. Sablon DTF (SD) -> Rp 25 / cm²
-    if (service === "SD") {
-        frontUnit = Math.round(frontDimensions.value.area * 25);
-        backUnit = Math.round(backDimensions.value.area * 25);
-    }
-    // B. DTF Premium (DP) -> Rp 35 / cm²
-    else if (service === "DP") {
-        frontUnit = Math.round(frontDimensions.value.area * 35);
-        backUnit = Math.round(backDimensions.value.area * 35);
-    }
-    // C. Sablon Plastisol (SB) -> Flat rate
-    else if (service === "SB") {
-        const getPlastisolPrice = (dim: typeof frontDimensions.value) => {
-            if (dim.area <= 0) return 0;
-            // Deteksi ukuran A3, A4, A5 kasar dari area
-            // A5: up to 310 cm²
-            // A4: up to 625 cm²
-            // A3: > 625 cm²
-            if (dim.area <= 310) return 10000; // A5
-            if (dim.area <= 625) return 20000; // A4
-            return 35000; // A3
-        };
-        frontUnit = getPlastisolPrice(frontDimensions.value);
-        backUnit = getPlastisolPrice(backDimensions.value);
-    }
-    // D. Bordir (BR) -> Tiered per cm² + min Rp5.000
-    else if (service === "BR") {
-        let costPerCm = 1500; // default < 11 pcs
-        if (qty >= 500) costPerCm = 100;
-        else if (qty >= 20) costPerCm = 500;
-        else if (qty >= 11) costPerCm = 1000;
-
-        const getBordirPrice = (dim: typeof frontDimensions.value) => {
-            if (dim.area <= 0) return 0;
-            const calc = dim.area * costPerCm;
-            return Math.max(calc, 5000); // Batas minimum Rp 5.000
-        };
-        frontUnit = getBordirPrice(frontDimensions.value);
-        backUnit = getBordirPrice(backDimensions.value);
-    }
-    // E. Polyflex (PL) -> Grosir vs Eceran, Gold vs Lainnya
-    else if (service === "PL") {
-        const isGrosir = qty >= 10;
-        let costPerCm = isGrosir ? 40 : 50;
-        if (isPolyflexGold.value) {
-            costPerCm = isGrosir ? 55 : 65;
+        if (service === "SD") {
+            return Math.round(dim.area * 25);
         }
-
-        frontUnit = Math.round(frontDimensions.value.area * costPerCm);
-        backUnit = Math.round(backDimensions.value.area * costPerCm);
-    }
-    // F. DTG (TG) -> Sederhanakan kalkulasi sesuai logic master DB
-    else if (service === "TG") {
-        const isWhite = store.shirtColor.toLowerCase() === "#ffffff";
-        const getDtgPrice = (dim: typeof frontDimensions.value) => {
-            if (dim.area <= 0) return 0;
-            // Model A5, A4, A3
-            let base = 35000; // default A3 Terang
-            if (dim.area <= 310)
-                base = isWhite ? 15000 : 25000; // A5
-            else if (dim.area <= 625)
-                base = isWhite ? 25000 : 35000; // A4
-            else base = isWhite ? 35000 : 45000; // A3
-
-            // Diskon Qty (grosir) jika >= 12 pcs
-            if (qty >= 12) {
-                base = Math.round(base * 0.85); // Potongan 15% untuk grosir
-            }
+        if (service === "DP") {
+            return Math.round(dim.area * 35);
+        }
+        if (service === "SB") {
+            if (dim.area <= 310) return 10000;
+            if (dim.area <= 625) return 20000;
+            return 35000;
+        }
+        if (service === "BR") {
+            let costPerCm = 1500;
+            if (qty >= 500) costPerCm = 100;
+            else if (qty >= 20) costPerCm = 500;
+            else if (qty >= 11) costPerCm = 1000;
+            return Math.max(dim.area * costPerCm, 5000);
+        }
+        if (service === "PL") {
+            const isGrosir = qty >= 10;
+            let costPerCm = isGrosir ? 40 : 50;
+            if (isPolyflexGold.value) costPerCm = isGrosir ? 55 : 65;
+            return Math.round(dim.area * costPerCm);
+        }
+        if (service === "TG") {
+            const isWhite = store.shirtColor.toLowerCase() === "#ffffff";
+            let base = 35000;
+            if (dim.area <= 310) base = isWhite ? 15000 : 25000;
+            else if (dim.area <= 625) base = isWhite ? 25000 : 35000;
+            else base = isWhite ? 35000 : 45000;
+            if (qty >= 12) base = Math.round(base * 0.85);
             return base;
-        };
-        frontUnit = getDtgPrice(frontDimensions.value);
-        backUnit = getDtgPrice(backDimensions.value);
-    }
+        }
+        return 0;
+    };
+
+    const frontUnit = calcSingleSidePrice(
+        frontService.value,
+        frontDimensions.value,
+    );
+    const backUnit = calcSingleSidePrice(
+        backService.value,
+        backDimensions.value,
+    );
 
     return {
         front: frontUnit,
@@ -238,9 +228,12 @@ const isUsingBackend = ref(false);
 const kalkulasiLoading = ref(false);
 const backendError = ref<string | null>(null);
 
+let latestKalkulasiRequestId = 0;
+
 const fetchBackendKalkulasi = async () => {
     if (!props.show) return;
 
+    const requestId = ++latestKalkulasiRequestId;
     kalkulasiLoading.value = true;
     backendError.value = null; // Reset error saat hit kalkulasi baru
     try {
@@ -259,19 +252,34 @@ const fetchBackendKalkulasi = async () => {
             qtyPrintXL: qtyPrintXL.value,
             qtyPrintXXL: qtyPrintXXL.value,
             qtyPrintXXXL: qtyPrintXXXL.value,
-            selectedService: selectedService.value,
+            selectedService: frontService.value,
+            frontService: frontService.value,
+            backService: backService.value,
+            designItems: designItems.value.map((item) => ({
+                id: item.id,
+                side: item.side,
+                label: item.label,
+                width: item.width,
+                height: item.height,
+                area: item.area,
+                service: item.service,
+            })),
             frontDimensions: frontDimensions.value,
             backDimensions: backDimensions.value,
             isPolyflexGold: isPolyflexGold.value,
+            kodeKaos: store.activeProduct?.brg_kode || null,
         };
 
         const data = await fetchKalkulasiHarga(payload);
+
+        if (requestId !== latestKalkulasiRequestId) return;
 
         backendBillingRows.value = data.billingRows;
         backendGrandTotal.value = data.subtotal;
         backendActiveShirtLabel.value = data.activeShirtLabel;
         isUsingBackend.value = true;
     } catch (e: any) {
+        if (requestId !== latestKalkulasiRequestId) return;
         console.warn(
             "Gagal terhubung ke backend API, menggunakan kalkulasi lokal:",
             e,
@@ -279,12 +287,17 @@ const fetchBackendKalkulasi = async () => {
         isUsingBackend.value = false;
 
         // Tangkap pesan error spesifik dari response backend
-        const msg = e.response?.data?.message || e.message || "Jenis kaos tersebut tidak ditemukan di database.";
+        const msg =
+            e.response?.data?.message ||
+            e.message ||
+            "Jenis kaos tersebut tidak ditemukan di database.";
         backendError.value = `${msg} Silakan hubungi admin.`;
     } finally {
-        setTimeout(() => {
-            kalkulasiLoading.value = false;
-        }, 300);
+        if (requestId === latestKalkulasiRequestId) {
+            setTimeout(() => {
+                kalkulasiLoading.value = false;
+            }, 300);
+        }
     }
 };
 
@@ -303,6 +316,9 @@ watch(
         qtyPrintXXL,
         qtyPrintXXXL,
         selectedService,
+        frontService,
+        backService,
+        designItems,
         isPolyflexGold,
         frontDimensions,
         backDimensions,
@@ -320,11 +336,17 @@ watch(
 const localBillingRows = computed(() => {
     const list: {
         type: "kaos" | "jasa";
+        kode?: string;
         nama: string;
+        kategori?: string;
         ukuran: string;
         qty: number;
         harga: number;
         total: number;
+        isCustomOrder?: boolean;
+        sod_custom?: string;
+        sod_custom_nama?: string;
+        sod_custom_data?: string;
     }[] = [];
 
     const sizes: ("S" | "M" | "L" | "XL" | "XXL" | "XXXL")[] = [
@@ -360,33 +382,163 @@ const localBillingRows = computed(() => {
         }
     });
 
-    // 2. Tambahkan baris Jasa (hanya jika ada jasa terpilih dan total desain ada)
-    const serviceLabel = getServiceLabel(selectedService.value);
-    const servicePrice = servicePrices.value.total;
+    // 2. Tambahkan baris Jasa Cetak (Per-item desain jika ada, atau fallback per-sisi)
+    if (totalPrintQty.value > 0) {
+        if (designItems.value.length > 0) {
+            designItems.value.forEach((item) => {
+                if (item.service !== "none" && item.area > 0) {
+                    const labelSvc = getServiceLabel(item.service);
+                    const posLabel =
+                        item.side === "front" ? "Depan" : "Belakang";
+                    const itemUkuran = getStandardDesignSize(
+                        item.width,
+                        item.height,
+                        item.area,
+                    );
 
-    const qtyPrintMap = {
-        S: qtyPrintS.value,
-        M: qtyPrintM.value,
-        L: qtyPrintL.value,
-        XL: qtyPrintXL.value,
-        XXL: qtyPrintXXL.value,
-        XXXL: qtyPrintXXXL.value,
-    };
+                    let unitPrice = 0;
+                    if (item.service === "SD")
+                        unitPrice = Math.round(item.area * 25);
+                    else if (item.service === "DP")
+                        unitPrice = Math.round(item.area * 35);
+                    else if (item.service === "SB") {
+                        if (item.area <= 310) unitPrice = 10000;
+                        else if (item.area <= 625) unitPrice = 20000;
+                        else unitPrice = 35000;
+                    } else if (item.service === "BR") {
+                        const qty = totalPrintQty.value || 1;
+                        let costPerCm = 1500;
+                        if (qty >= 500) costPerCm = 100;
+                        else if (qty >= 20) costPerCm = 500;
+                        else if (qty >= 11) costPerCm = 1000;
+                        unitPrice = Math.max(item.area * costPerCm, 5000);
+                    } else if (item.service === "PL") {
+                        const qty = totalPrintQty.value || 1;
+                        const isGrosir = qty >= 10;
+                        let costPerCm = isGrosir ? 40 : 50;
+                        if (isPolyflexGold.value)
+                            costPerCm = isGrosir ? 55 : 65;
+                        unitPrice = Math.round(item.area * costPerCm);
+                    } else if (item.service === "TG") {
+                        const qty = totalPrintQty.value || 1;
+                        const isWhite =
+                            store.shirtColor.toLowerCase() === "#ffffff";
+                        let base = 35000;
+                        if (item.area <= 310) base = isWhite ? 15000 : 25000;
+                        else if (item.area <= 625)
+                            base = isWhite ? 25000 : 35000;
+                        else base = isWhite ? 35000 : 45000;
+                        if (qty >= 12) base = Math.round(base * 0.85);
+                        unitPrice = base;
+                    }
 
-    if (selectedService.value !== "none" && servicePrice > 0) {
-        sizes.forEach((sz) => {
-            const q = Number(qtyPrintMap[sz]);
-            if (q > 0) {
+                    if (unitPrice > 0) {
+                        const customDataObj = {
+                            titikCetak: [
+                                {
+                                    keterangan: item.label || "Desain",
+                                    sizeCetak: itemUkuran,
+                                    panjang: item.width || 0,
+                                    lebar: item.height || 0,
+                                    service: item.service,
+                                },
+                            ],
+                            hargaPerCm: item.service === "DP" ? 35 : 25,
+                        };
+
+                        list.push({
+                            type: "jasa",
+                            kode: `CUSTOM-${item.service}`,
+                            nama: `${labelSvc} - ${item.label} (${posLabel})`,
+                            kategori: "CUSTOM",
+                            ukuran: itemUkuran,
+                            qty: totalPrintQty.value,
+                            harga: unitPrice,
+                            total: totalPrintQty.value * unitPrice,
+                            isCustomOrder: true,
+                            sod_custom: "Y",
+                            sod_custom_nama: `${labelSvc} - ${item.label} (${posLabel})`,
+                            sod_custom_data: JSON.stringify(customDataObj),
+                        });
+                    }
+                }
+            });
+        } else {
+            if (
+                frontService.value !== "none" &&
+                servicePrices.value.front > 0
+            ) {
+                const frontLabel = getServiceLabel(frontService.value);
+                const frontUkuran = getStandardDesignSize(
+                    frontDimensions.value.width,
+                    frontDimensions.value.height,
+                    frontDimensions.value.area,
+                );
+                const frontCustomData = {
+                    titikCetak: [
+                        {
+                            keterangan: "Sisi Depan",
+                            sizeCetak: frontUkuran,
+                            panjang: frontDimensions.value.width || 0,
+                            lebar: frontDimensions.value.height || 0,
+                            service: frontService.value,
+                        },
+                    ],
+                    hargaPerCm: frontService.value === "DP" ? 35 : 25,
+                };
+
                 list.push({
                     type: "jasa",
-                    nama: `${serviceLabel} (${frontDimensions.value.area > 0 ? "Depan" : ""}${frontDimensions.value.area > 0 && backDimensions.value.area > 0 ? " & " : ""}${backDimensions.value.area > 0 ? "Belakang" : ""})`,
-                    ukuran: sz,
-                    qty: q,
-                    harga: servicePrice,
-                    total: q * servicePrice,
+                    kode: `CUSTOM-${frontService.value}`,
+                    nama: `${frontLabel} (Depan)`,
+                    kategori: "CUSTOM",
+                    ukuran: frontUkuran,
+                    qty: totalPrintQty.value,
+                    harga: servicePrices.value.front,
+                    total: totalPrintQty.value * servicePrices.value.front,
+                    isCustomOrder: true,
+                    sod_custom: "Y",
+                    sod_custom_nama: `${frontLabel} (Depan)`,
+                    sod_custom_data: JSON.stringify(frontCustomData),
                 });
             }
-        });
+
+            if (backService.value !== "none" && servicePrices.value.back > 0) {
+                const backLabel = getServiceLabel(backService.value);
+                const backUkuran = getStandardDesignSize(
+                    backDimensions.value.width,
+                    backDimensions.value.height,
+                    backDimensions.value.area,
+                );
+                const backCustomData = {
+                    titikCetak: [
+                        {
+                            keterangan: "Sisi Belakang",
+                            sizeCetak: backUkuran,
+                            panjang: backDimensions.value.width || 0,
+                            lebar: backDimensions.value.height || 0,
+                            service: backService.value,
+                        },
+                    ],
+                    hargaPerCm: backService.value === "DP" ? 35 : 25,
+                };
+
+                list.push({
+                    type: "jasa",
+                    kode: `CUSTOM-${backService.value}`,
+                    nama: `${backLabel} (Belakang)`,
+                    kategori: "CUSTOM",
+                    ukuran: backUkuran,
+                    qty: totalPrintQty.value,
+                    harga: servicePrices.value.back,
+                    total: totalPrintQty.value * servicePrices.value.back,
+                    isCustomOrder: true,
+                    sod_custom: "Y",
+                    sod_custom_nama: `${backLabel} (Belakang)`,
+                    sod_custom_data: JSON.stringify(backCustomData),
+                });
+            }
+        }
     }
 
     return list;
@@ -403,7 +555,10 @@ const billingRows = computed(() => {
 const grandTotal = computed(() => {
     return isUsingBackend.value
         ? backendGrandTotal.value
-        : billingRows.value.reduce((sum: number, row: any) => sum + row.total, 0);
+        : billingRows.value.reduce(
+              (sum: number, row: any) => sum + row.total,
+              0,
+          );
 });
 
 // --- METHODS ---
@@ -411,43 +566,90 @@ const grandTotal = computed(() => {
 function getServiceLabel(code: string) {
     switch (code) {
         case "none":
-            return "Tanpa Sablon/Cetak";
-        case "SD":
-            return "Sablon DTF Standard";
-        case "DP":
-            return "Sablon DTF Premium";
-        case "SB":
-            return "Sablon Plastisol";
+            return "Tanpa cetak";
         case "BR":
-            return "Jasa Bordir Komputer";
-        case "PL":
-            return "Sablon Polyflex" + (isPolyflexGold.value ? " Gold" : "");
+            return "Bordir";
+        case "SD":
+            return "DTF Standart";
+        case "DP":
+            return "DTF Premium";
         case "TG":
-            return "Sablon Direct to Garment (DTG)";
+            return "DTG";
         default:
             return "Jasa Cetak Custom";
     }
 }
 
-// Deteksi otomatis bounding box objek di canvas
-const detectDesignDimensions = () => {
-    // 1. Desain Depan
-    let frontObjects: any[] = [];
-    if (store.currentView === "front" && props.canvasRef?.fabricCanvas) {
-        frontObjects = props.canvasRef.fabricCanvas.getObjects();
-    } else {
-        const savedFront = store.canvasStates.front;
-        frontObjects = savedFront?.json?.objects || [];
+function getStandardDesignSize(
+    width: number,
+    height: number,
+    area: number,
+): string {
+    const w = Number(width || 0);
+    const h = Number(height || 0);
+    const a = Number(area || 0);
+
+    if (w <= 0 || h <= 0 || a <= 0) return "-";
+
+    // Logo (10x10 cm ± 2.5cm)
+    if (Math.abs(w - 10) <= 2.5 && Math.abs(h - 10) <= 2.5) {
+        return "Logo";
     }
 
-    // 2. Desain Belakang
-    let backObjects: any[] = [];
-    if (store.currentView === "back" && props.canvasRef?.fabricCanvas) {
-        backObjects = props.canvasRef.fabricCanvas.getObjects();
-    } else {
-        const savedBack = store.canvasStates.back;
-        backObjects = savedBack?.json?.objects || [];
+    // A5 (14.8 x 21.0 cm ± 2.5cm)
+    if (
+        (Math.abs(w - 14.8) <= 2.5 && Math.abs(h - 21.0) <= 2.5) ||
+        (Math.abs(w - 21.0) <= 2.5 && Math.abs(h - 14.8) <= 2.5)
+    ) {
+        return "A5";
     }
+
+    // A4 (21.0 x 29.7 cm ± 2.5cm)
+    if (
+        (Math.abs(w - 21.0) <= 2.5 && Math.abs(h - 29.7) <= 2.5) ||
+        (Math.abs(w - 29.7) <= 2.5 && Math.abs(h - 21.0) <= 2.5)
+    ) {
+        return "A4";
+    }
+
+    // A3 (29.7 x 42.0 cm ± 2.5cm)
+    if (
+        (Math.abs(w - 29.7) <= 2.5 && Math.abs(h - 42.0) <= 2.5) ||
+        (Math.abs(w - 42.0) <= 2.5 && Math.abs(h - 29.7) <= 2.5)
+    ) {
+        return "A3";
+    }
+
+    // Ukuran non-standar dengan kombinasi dimensi (misal: Custom (20.6 × 20.6))
+    return `Custom (${w} × ${h})`;
+}
+
+// Deteksi otomatis bounding box objek di canvas
+const detectDesignDimensions = () => {
+    // 0. Simpan dulu state kanvas aktif terbaru ke Pinia store
+    if (props.canvasRef?.saveCurrentState) {
+        try {
+            props.canvasRef.saveCurrentState();
+        } catch (e) {
+            console.warn("Gagal menyimpan state kanvas saat ini:", e);
+        }
+    }
+
+    const getObjectsFromState = (side: "front" | "back") => {
+        if (store.currentView === side && props.canvasRef?.fabricCanvas) {
+            return props.canvasRef.fabricCanvas.getObjects() || [];
+        }
+        const saved = store.canvasStates[side];
+        if (!saved) return [];
+        if (saved.json && Array.isArray(saved.json.objects))
+            return saved.json.objects;
+        if (Array.isArray(saved.objects)) return saved.objects;
+        return [];
+    };
+
+    // 1. Desain Depan & Belakang
+    const frontObjects: any[] = getObjectsFromState("front");
+    const backObjects: any[] = getObjectsFromState("back");
 
     const pcm = 5.5; // Default standard scale px/cm
 
@@ -494,9 +696,12 @@ const detectDesignDimensions = () => {
         return { width: wCm, height: hCm, area };
     };
 
-    const parseObjects = (objs: any[]) => {
+    const parseObjectsToItems = (
+        objs: any[],
+        side: "front" | "back",
+    ): DesignItem[] => {
         const pcm = 5.5; // px/cm
-        return objs.map((obj) => {
+        return objs.map((obj, idx) => {
             const isText =
                 obj.type === "text" ||
                 obj.type === "i-text" ||
@@ -508,8 +713,9 @@ const detectDesignDimensions = () => {
             const hCm = Number(
                 ((obj.height * (obj.scaleY || 1)) / pcm).toFixed(1),
             );
+            const area = Number((wCm * hCm).toFixed(1));
 
-            let label = "Gambar Sablon";
+            let label = `Desain ${idx + 1}`;
             if (isText) {
                 const txt = obj.text || "";
                 const displayTxt =
@@ -517,27 +723,78 @@ const detectDesignDimensions = () => {
                 label = `Teks: "${displayTxt}"`;
             }
 
+            const itemId =
+                obj.id || `${side}-${idx}-${isText ? "text" : "img"}`;
+            const existingService = designServiceMap.value[itemId] || "DP";
+
             return {
+                id: itemId,
+                side,
                 type: (isText ? "text" : "image") as "text" | "image",
                 label,
-                dimensions: `${wCm} × ${hCm} cm`,
+                width: wCm,
+                height: hCm,
+                area,
+                service: existingService,
             };
         });
     };
 
     frontDimensions.value = calcBounds(frontObjects);
     backDimensions.value = calcBounds(backObjects);
-    frontDesignItems.value = parseObjects(frontObjects);
-    backDesignItems.value = parseObjects(backObjects);
 
-    // Set Default Jasa cetak ke DTF (SD) jika terdeteksi ada sablon
-    if (frontDimensions.value.area > 0 || backDimensions.value.area > 0) {
-        if (selectedService.value === "none") {
-            selectedService.value = "SD";
-        }
+    if (frontDimensions.value.area > 0) {
+        if (frontService.value === "none") frontService.value = "DP";
     } else {
-        selectedService.value = "none";
+        frontService.value = "none";
     }
+
+    if (backDimensions.value.area > 0) {
+        if (backService.value === "none") backService.value = "DP";
+    } else {
+        backService.value = "none";
+    }
+
+    const parsedFront = parseObjectsToItems(frontObjects, "front");
+    const parsedBack = parseObjectsToItems(backObjects, "back");
+
+    let combinedItems: DesignItem[] = [...parsedFront, ...parsedBack];
+
+    // Fallback jika tidak ada objek per-item tapi total area > 0
+    if (combinedItems.length === 0) {
+        if (frontDimensions.value.area > 0) {
+            combinedItems.push({
+                id: "fallback-front",
+                side: "front",
+                type: "image",
+                label: "Desain Sisi Depan",
+                width: frontDimensions.value.width,
+                height: frontDimensions.value.height,
+                area: frontDimensions.value.area,
+                service:
+                    designServiceMap.value["fallback-front"] ||
+                    frontService.value ||
+                    "DP",
+            });
+        }
+        if (backDimensions.value.area > 0) {
+            combinedItems.push({
+                id: "fallback-back",
+                side: "back",
+                type: "image",
+                label: "Desain Sisi Belakang",
+                width: backDimensions.value.width,
+                height: backDimensions.value.height,
+                area: backDimensions.value.area,
+                service:
+                    designServiceMap.value["fallback-back"] ||
+                    backService.value ||
+                    "DP",
+            });
+        }
+    }
+
+    designItems.value = combinedItems;
 };
 
 // Generate Mockup Previews
@@ -582,6 +839,36 @@ const handleCreateOffer = () => {
         return;
     }
 
+    const formattedOfferItems = billingRows.value.map(
+        (row: any, idx: number) => ({
+            id: Date.now() + idx,
+            kode:
+                row.kode ||
+                (row.type === "kaos"
+                    ? store.activeProduct?.brg_kode || "KAOS"
+                    : "CUSTOM"),
+            nama: row.nama,
+            kategori:
+                row.kategori || (row.type === "kaos" ? "REGULER" : "CUSTOM"),
+            ukuran: row.ukuran,
+            stok: 0,
+            jumlah: row.qty,
+            harga: row.harga,
+            isHargaReadonly: row.type === "jasa",
+            diskonPersen: 0,
+            diskonRp: 0,
+            total: row.total,
+            barcode: "",
+            noSoDtf: "",
+            noPengajuanHarga: "",
+            pin: "",
+            isCustomOrder: row.type === "jasa",
+            sod_custom: row.type === "jasa" ? "Y" : "N",
+            sod_custom_nama: row.sod_custom_nama || row.nama,
+            sod_custom_data: row.sod_custom_data || null,
+        }),
+    );
+
     const offerData = {
         shirtLabel: activeShirtLabel.value,
         shirtType: store.currentShirtType,
@@ -590,6 +877,14 @@ const handleCreateOffer = () => {
         grandTotal: grandTotal.value,
         serviceType: selectedService.value,
         serviceLabel: getServiceLabel(selectedService.value),
+        designItems: designItems.value.map((item) => ({
+            id: item.id,
+            side: item.side,
+            label: item.label,
+            dimensions: `${item.width} × ${item.height} cm`,
+            serviceType: item.service,
+            serviceLabel: getServiceLabel(item.service),
+        })),
         dimensions: {
             front: frontDimensions.value,
             back: backDimensions.value,
@@ -611,36 +906,174 @@ const handleCreateOffer = () => {
             XXXL: qtyPrintXXXL.value,
         },
         billingRows: billingRows.value,
+        items: formattedOfferItems, // Array item siap pakai untuk OfferCreateView.vue
     };
 
+    currentOfferData.value = offerData;
     emit("create-offer", offerData);
+    return offerData;
 };
 
-// Auto-fill quantity active size
-const setInitialActiveQty = () => {
-    const size = store.currentSize;
-    if (size === "S") {
-        qtyS.value = 1;
-        qtyPrintS.value = 1;
-    } else if (size === "M") {
-        qtyM.value = 1;
-        qtyPrintM.value = 1;
-    } else if (size === "L") {
-        qtyL.value = 1;
-        qtyPrintL.value = 1;
-    } else if (size === "XL") {
-        qtyXL.value = 1;
-        qtyPrintXL.value = 1;
-    } else if (size === "XXL") {
-        qtyXXL.value = 1;
-        qtyPrintXXL.value = 1;
-    } else if (size === "XXXL") {
-        qtyXXXL.value = 1;
-        qtyPrintXXXL.value = 1;
+const showPenawaranModal = ref(false);
+const showLoginModal = ref(false);
+const currentOfferData = ref<any>(null);
+
+const handleOpenPenawaranModal = () => {
+    if (totalQty.value <= 0) {
+        alert("Masukkan jumlah kuantitas pesanan terlebih dahulu.");
+        return;
+    }
+    handleCreateOffer();
+
+    if (!authStore.isLoggedIn) {
+        showLoginModal.value = true;
+        return;
+    }
+
+    showPenawaranModal.value = true;
+};
+
+const handleLoginSuccess = () => {
+    showPenawaranModal.value = true;
+};
+
+const isSharingWhatsapp = ref(false);
+
+const handleSendToWhatsapp = async () => {
+    if (totalQty.value <= 0) {
+        alert(
+            "Masukkan kuantitas pesanan terlebih dahulu sebelum mengirim ke WA Admin.",
+        );
+        return;
+    }
+
+    isSharingWhatsapp.value = true;
+    try {
+        if (props.canvasRef?.saveCurrentState) {
+            props.canvasRef.saveCurrentState();
+        }
+
+        const canvasStatePayload = {
+            front: store.canvasStates.front,
+            back: store.canvasStates.back,
+            sizes: {
+                S: qtyS.value,
+                M: qtyM.value,
+                L: qtyL.value,
+                XL: qtyXL.value,
+                XXL: qtyXXL.value,
+                XXXL: qtyXXXL.value,
+            },
+            totalQty: totalQty.value,
+            subtotal: grandTotal.value,
+            fabric: store.selectedFabric,
+            shirtType: store.currentShirtType,
+        };
+
+        const designId = "DSG-" + Date.now().toString(36).toUpperCase();
+
+        const saveRes = await saveMockupDesign({
+            id: designId,
+            canvasState: JSON.stringify(canvasStatePayload),
+            shirtColor: store.shirtColor,
+            viewType: store.currentView as any,
+        });
+
+        const activeId = saveRes?.id || designId;
+        const currentUrl = window.location.origin + window.location.pathname;
+        const shareUrl = `${currentUrl}?designId=${activeId}`;
+
+        const shirtLabel =
+            activeShirtLabel.value ||
+            `${store.selectedFabric} ${store.currentShirtType}`;
+        const totalRp = formatRupiah(grandTotal.value);
+
+        const messageText = `Halo Admin KAOSAN, saya mau pesan kaos custom ini:
+
+📌 Kode: ${activeId}
+🔗 Workspace: ${shareUrl}
+👕 ${totalQty.value} Pcs (${shirtLabel})
+💰 Est. Total: ${totalRp}
+
+Mohon dicek workspace & dibuatkan penawarannya. Terima kasih!`;
+
+        const waNumber = "6282138424194";
+        // const waNumber = "628123456789";
+        const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(messageText)}`;
+        window.open(waUrl, "_blank");
+    } catch (e: any) {
+        console.error("Gagal membagikan ke WA:", e);
+        alert("Gagal menyimpan workspace desain: " + (e.message || e));
+    } finally {
+        isSharingWhatsapp.value = false;
     }
 };
 
+// Auto-fill quantity active size atau dari state tersimpan
+const setInitialActiveQty = () => {
+    const saved = store.orderQuantities || {};
+    const s = saved.S ?? 0;
+    const m = saved.M ?? 0;
+    const l = saved.L ?? 0;
+    const xl = saved.XL ?? 0;
+    const xxl = saved.XXL ?? 0;
+    const xxxl = saved.XXXL ?? 0;
+
+    const hasSavedQty =
+        s > 0 || m > 0 || l > 0 || xl > 0 || xxl > 0 || xxxl > 0;
+
+    if (hasSavedQty) {
+        qtyS.value = s;
+        qtyM.value = m;
+        qtyL.value = l;
+        qtyXL.value = xl;
+        qtyXXL.value = xxl;
+        qtyXXXL.value = xxxl;
+        syncPrintQties();
+        return;
+    }
+
+    const size = store.currentSize || "L";
+    qtyS.value = 0;
+    qtyM.value = 0;
+    qtyL.value = 0;
+    qtyXL.value = 0;
+    qtyXXL.value = 0;
+    qtyXXXL.value = 0;
+
+    if (size === "S") {
+        qtyS.value = 1;
+    } else if (size === "M") {
+        qtyM.value = 1;
+    } else if (size === "XL") {
+        qtyXL.value = 1;
+    } else if (size === "XXL") {
+        qtyXXL.value = 1;
+    } else if (size === "XXXL") {
+        qtyXXXL.value = 1;
+    } else {
+        qtyL.value = 1;
+        store.currentSize = "L";
+    }
+    syncPrintQties();
+};
+
+const syncStoreQuantities = () => {
+    store.orderQuantities = {
+        S: qtyS.value,
+        M: qtyM.value,
+        L: qtyL.value,
+        XL: qtyXL.value,
+        XXL: qtyXXL.value,
+        XXXL: qtyXXXL.value,
+    };
+};
+
 // Sync and Cap watchers
+watch([qtyS, qtyM, qtyL, qtyXL, qtyXXL, qtyXXXL], () => {
+    syncStoreQuantities();
+});
+
 watch(qtyS, (newVal) => {
     if (qtyPrintS.value > newVal) qtyPrintS.value = newVal;
     else if (qtyPrintS.value === 0 && newVal > 0) qtyPrintS.value = newVal;
@@ -691,26 +1124,21 @@ watch(
     () => props.show,
     (isOpen) => {
         if (isOpen) {
-            qtyS.value = 0;
-            qtyM.value = 0;
-            qtyL.value = 0;
-            qtyXL.value = 0;
-            qtyXXL.value = 0;
-            qtyXXXL.value = 0;
-
-            qtyPrintS.value = 0;
-            qtyPrintM.value = 0;
-            qtyPrintL.value = 0;
-            qtyPrintXL.value = 0;
-            qtyPrintXXL.value = 0;
-            qtyPrintXXXL.value = 0;
-
             setInitialActiveQty();
             detectDesignDimensions();
             generatePreviews();
+            fetchBackendKalkulasi();
         }
     },
 );
+
+// Sinkronkan kembali dimensi dan kalkulasi saat modal penawaran ditutup/dibatalkan
+watch(showPenawaranModal, (isOpen) => {
+    if (!isOpen && props.show) {
+        detectDesignDimensions();
+        fetchBackendKalkulasi();
+    }
+});
 </script>
 
 <template>
@@ -1153,7 +1581,7 @@ watch(
                                     <span
                                         class="text-[9.5px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                                     >
-                                        2. Jumlah Kaos yang Disablon/Bordir
+                                        2. Jumlah Kaos yang Dicetak/Dibordir
                                     </span>
                                     <button
                                         @click="syncPrintQties"
@@ -1245,67 +1673,158 @@ watch(
                             <span
                                 class="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider"
                             >
-                                Konfigurasi Jasa Cetak (Opsional)
+                                CETAK/BORDIR
                             </span>
                         </div>
 
                         <div
                             class="p-4 bg-slate-50 dark:bg-slate-950/40 border border-sky-100/50 dark:border-slate-850 rounded-2xl flex flex-col gap-3.5"
                         >
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- TAMPILAN PER DESAIN (Jika terdeteksi objek desain) -->
+                            <div
+                                v-if="designItems.length > 0"
+                                class="flex flex-col gap-2.5"
+                            >
+                                <div
+                                    v-for="item in designItems"
+                                    :key="item.id"
+                                    class="p-3 bg-white dark:bg-slate-900 border border-sky-100/80 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
+                                >
+                                    <div
+                                        class="flex items-center gap-2.5 min-w-0"
+                                    >
+                                        <span
+                                            class="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider flex-shrink-0"
+                                            :class="
+                                                item.side === 'front'
+                                                    ? 'bg-sky-100 text-sky-700 dark:bg-sky-950/80 dark:text-sky-300'
+                                                    : 'bg-purple-100 text-purple-700 dark:bg-purple-950/80 dark:text-purple-300'
+                                            "
+                                        >
+                                            {{
+                                                item.side === "front"
+                                                    ? "Depan"
+                                                    : "Belakang"
+                                            }}
+                                        </span>
+                                        <div class="flex flex-col min-w-0">
+                                            <span
+                                                class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate"
+                                            >
+                                                {{ item.label }}
+                                            </span>
+                                            <span
+                                                class="text-[9.5px] text-slate-400 font-mono"
+                                            >
+                                                {{ item.width }} ×
+                                                {{ item.height }} cm ({{
+                                                    item.area
+                                                }}
+                                                cm²)
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="flex items-center gap-2 flex-shrink-0"
+                                    >
+                                        <label
+                                            class="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider hidden sm:inline"
+                                        >
+                                            Cetak/Bordir:
+                                        </label>
+                                        <select
+                                            v-model="item.service"
+                                            @change="
+                                                designServiceMap[item.id] =
+                                                    item.service
+                                            "
+                                            class="px-3 py-1.5 rounded-lg border border-sky-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-semibold focus:ring-1 focus:ring-sky-500 focus:outline-none cursor-pointer"
+                                        >
+                                            <option value="none">
+                                                Tanpa cetak
+                                            </option>
+                                            <option value="BR">Bordir</option>
+                                            <option value="SD">
+                                                DTF Standart
+                                            </option>
+                                            <option value="DP">
+                                                DTF Premium
+                                            </option>
+                                            <option value="TG">DTG</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- FALLBACK: PILIHAN PER SISI JIKA BELUM ADA DESAIN -->
+                            <div
+                                v-else
+                                class="grid grid-cols-1 md:grid-cols-2 gap-4"
+                            >
+                                <!-- Jenis Jasa Depan -->
                                 <div class="flex flex-col gap-1.5">
                                     <label
-                                        class="text-[10px] font-black text-slate-400 uppercase tracking-wider"
+                                        class="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center justify-between"
                                     >
-                                        Jenis Jasa
+                                        <span>Sisi Depan</span>
+                                        <span
+                                            v-if="frontDimensions.area > 0"
+                                            class="text-sky-500 font-bold font-mono"
+                                            >({{ frontDimensions.width }} ×
+                                            {{ frontDimensions.height }}
+                                            cm)</span
+                                        >
+                                        <span
+                                            v-else
+                                            class="text-slate-400 italic font-normal"
+                                            >(Kosong)</span
+                                        >
                                     </label>
                                     <select
-                                        v-model="selectedService"
+                                        v-model="frontService"
                                         class="px-3 py-2 rounded-xl border border-sky-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold focus:ring-1 focus:ring-sky-500 focus:outline-none cursor-pointer"
                                     >
                                         <option value="none">
-                                            Tanpa Jasa Cetak (Hanya Polosan)
+                                            Tanpa cetak
                                         </option>
-                                        <option value="SD">
-                                            Sablon DTF Standard (Rp25 / cm²)
-                                        </option>
-                                        <option value="DP">
-                                            Sablon DTF Premium (Rp35 / cm²)
-                                        </option>
-                                        <option value="SB">
-                                            Sablon Plastisol (Flat rate
-                                            A3/A4/A5)
-                                        </option>
-                                        <option value="BR">
-                                            Jasa Bordir Komputer (Tiered qty)
-                                        </option>
-                                        <option value="PL">
-                                            Sablon Polyflex (Warna/Gold)
-                                        </option>
-                                        <option value="TG">
-                                            Sablon Direct to Garment (DTG)
-                                        </option>
+                                        <option value="BR">Bordir</option>
+                                        <option value="SD">DTF Standart</option>
+                                        <option value="DP">DTF Premium</option>
+                                        <option value="TG">DTG</option>
                                     </select>
                                 </div>
 
-                                <!-- Opsi Spesifik untuk Polyflex -->
-                                <div
-                                    v-if="selectedService === 'PL'"
-                                    class="flex flex-col justify-end pb-1"
-                                >
+                                <!-- Jenis Jasa Belakang -->
+                                <div class="flex flex-col gap-1.5">
                                     <label
-                                        class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-205"
+                                        class="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center justify-between"
                                     >
-                                        <input
-                                            type="checkbox"
-                                            v-model="isPolyflexGold"
-                                            class="rounded text-sky-600 focus:ring-sky-500 w-4 h-4"
-                                        />
+                                        <span>Sisi Belakang</span>
                                         <span
-                                            >Gunakan Bahan Warna GOLD
-                                            (Emas)</span
+                                            v-if="backDimensions.area > 0"
+                                            class="text-sky-500 font-bold font-mono"
+                                            >({{ backDimensions.width }} ×
+                                            {{ backDimensions.height }}
+                                            cm)</span
+                                        >
+                                        <span
+                                            v-else
+                                            class="text-slate-400 italic font-normal"
+                                            >(Kosong)</span
                                         >
                                     </label>
+                                    <select
+                                        v-model="backService"
+                                        class="px-3 py-2 rounded-xl border border-sky-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold focus:ring-1 focus:ring-sky-500 focus:outline-none cursor-pointer"
+                                    >
+                                        <option value="none">
+                                            Tanpa cetak
+                                        </option>
+                                        <option value="BR">Bordir</option>
+                                        <option value="SD">DTF Standart</option>
+                                        <option value="DP">DTF Premium</option>
+                                        <option value="TG">DTG</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -1324,9 +1843,14 @@ watch(
                             v-if="backendError"
                             class="p-3 bg-red-50 dark:bg-red-955/15 border border-red-200/60 dark:border-red-900/40 rounded-2xl flex items-start gap-2.5 text-xs text-red-700 dark:text-red-400 font-medium animate-in fade-in duration-200"
                         >
-                            <PhInfo :size="16" class="mt-0.5 flex-shrink-0 text-red-500 dark:text-red-400" />
+                            <PhInfo
+                                :size="16"
+                                class="mt-0.5 flex-shrink-0 text-red-500 dark:text-red-400"
+                            />
                             <div>
-                                <span class="font-black uppercase text-[9.5px] tracking-wider block mb-0.5 text-red-800 dark:text-red-300">
+                                <span
+                                    class="font-black uppercase text-[9.5px] tracking-wider block mb-0.5 text-red-800 dark:text-red-300"
+                                >
                                     Peringatan Sistem
                                 </span>
                                 {{ backendError }}
@@ -1341,11 +1865,20 @@ watch(
                                 v-if="kalkulasiLoading"
                                 class="absolute inset-0 bg-white/75 dark:bg-slate-900/75 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center gap-2.5 animate-in fade-in duration-200"
                             >
-                                <div class="relative flex items-center justify-center">
-                                    <div class="w-8 h-8 rounded-full border-4 border-sky-500/20 border-t-sky-500 animate-spin"></div>
-                                    <PhCalculator :size="14" class="absolute text-sky-500 animate-pulse" />
+                                <div
+                                    class="relative flex items-center justify-center"
+                                >
+                                    <div
+                                        class="w-8 h-8 rounded-full border-4 border-sky-500/20 border-t-sky-500 animate-spin"
+                                    ></div>
+                                    <PhCalculator
+                                        :size="14"
+                                        class="absolute text-sky-500 animate-pulse"
+                                    />
                                 </div>
-                                <span class="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest animate-pulse">
+                                <span
+                                    class="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest animate-pulse"
+                                >
                                     Menghitung estimasi harga...
                                 </span>
                             </div>
@@ -1468,10 +2001,45 @@ watch(
                                 ongkos kirim.
                             </span>
                         </div>
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2.5">
+                            <!-- Tombol Buat Penawaran (Unreleased / Soon) -->
+                            <button
+                                disabled
+                                class="px-3.5 py-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 text-slate-600 dark:text-slate-350 text-xs font-bold cursor-not-allowed flex items-center gap-2 select-none opacity-85 shadow-xs"
+                                type="button"
+                                title="Fitur Buat Penawaran sedang dalam tahap integrasi & rilis (Segera Hadir)"
+                            >
+                                <PhFileText :size="16" class="text-sky-500 shrink-0" />
+                                <span>Buat Penawaran</span>
+                                <span
+                                    class="px-1.5 py-0.5 text-[9px] font-black bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-md uppercase tracking-wider border border-sky-500/20"
+                                    >Segera</span
+                                >
+                            </button>
+
+                            <!-- Tombol Kirim WA Admin (Unreleased / Soon) -->
+                            <button
+                                disabled
+                                class="px-3.5 py-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 text-slate-600 dark:text-slate-350 text-xs font-bold cursor-not-allowed flex items-center gap-2 select-none opacity-85 shadow-xs"
+                                type="button"
+                                title="Fitur Kirim Estimasi ke WA Admin Store sedang dalam integrasi & rilis (Segera Hadir)"
+                            >
+                                <PhWhatsappLogo
+                                    :size="16"
+                                    weight="bold"
+                                    class="text-emerald-500 shrink-0"
+                                />
+                                <span>Kirim WA Admin</span>
+                                <span
+                                    class="px-1.5 py-0.5 text-[9px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-md uppercase tracking-wider border border-emerald-500/20"
+                                    >Segera</span
+                                >
+                            </button>
+
+                            <!-- Tombol Tutup Modal -->
                             <button
                                 @click="emit('close')"
-                                class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-750 dark:hover:bg-slate-700 text-white text-xs font-black uppercase tracking-wider shadow-md transition-all cursor-pointer active:scale-95"
+                                class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-750 dark:hover:bg-slate-700 text-white text-xs font-black uppercase tracking-wider shadow-md transition-all cursor-pointer active:scale-95"
                                 type="button"
                             >
                                 Tutup
@@ -1481,6 +2049,20 @@ watch(
                 </div>
             </div>
         </div>
+
+        <!-- MODAL FORM BUAT PENAWARAN -->
+        <PenawaranFormModal
+            :isOpen="showPenawaranModal"
+            :initialOfferData="currentOfferData"
+            @close="showPenawaranModal = false"
+        />
+
+        <!-- MODAL QUICK LOGIN ADMIN -->
+        <LoginModal
+            :isOpen="showLoginModal"
+            @close="showLoginModal = false"
+            @success="handleLoginSuccess"
+        />
     </div>
 </template>
 
