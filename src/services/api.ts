@@ -112,7 +112,7 @@ export interface GetDesignResponse {
   expiresAt: string;
 }
 
-const API_BASE_URL = "/api";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export async function fetchKalkulasiHarga(
   payload: KalkulasiPayload,
@@ -198,7 +198,9 @@ export async function fetchMockupDesign(
 }
 
 export async function fetchLookupProducts(term: string = ""): Promise<any[]> {
-  const res = await fetch(`${API_BASE_URL}/lookup/products?term=${encodeURIComponent(term)}`);
+  const res = await fetch(
+    `${API_BASE_URL}/lookup/products?term=${encodeURIComponent(term)}`,
+  );
   if (!res.ok) {
     throw new Error(`Gagal memuat lookup produk (HTTP ${res.status})`);
   }
@@ -206,8 +208,12 @@ export async function fetchLookupProducts(term: string = ""): Promise<any[]> {
   return result.data || [];
 }
 
-export async function fetchLookupCustomers(term: string = ""): Promise<{ items: any[]; total: number }> {
-  const res = await fetch(`${API_BASE_URL}/lookup/customers?term=${encodeURIComponent(term)}`);
+export async function fetchLookupCustomers(
+  term: string = "",
+): Promise<{ items: any[]; total: number }> {
+  const res = await fetch(
+    `${API_BASE_URL}/lookup/customers?term=${encodeURIComponent(term)}`,
+  );
   if (!res.ok) {
     throw new Error(`Gagal memuat lookup customer (HTTP ${res.status})`);
   }
@@ -227,7 +233,9 @@ export async function savePenawaran(payload: any): Promise<any> {
   const result = await res.json();
 
   if (!res.ok || result.success === false) {
-    throw new Error(result.message || `Gagal menyimpan penawaran (HTTP ${res.status})`);
+    throw new Error(
+      result.message || `Gagal menyimpan penawaran (HTTP ${res.status})`,
+    );
   }
 
   return result.data || result;
@@ -248,7 +256,9 @@ export interface LoginResponse {
   };
 }
 
-export async function loginAdmin(payload: LoginPayload): Promise<LoginResponse> {
+export async function loginAdmin(
+  payload: LoginPayload,
+): Promise<LoginResponse> {
   const res = await fetch(`${API_BASE_URL}/auth/login`, {
     method: "POST",
     headers: {
