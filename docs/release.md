@@ -14,34 +14,50 @@ Gunakan aturan Semantic Versioning (SemVer):
 - **Minor (0.X.0):** Jika ada penambahan fitur baru yang kompatibel dengan versi sebelumnya.
 - **Patch (0.0.X):** Jika ada perbaikan bug yang kompatibel dengan versi sebelumnya.
 
-### Langkah 2: Commit dan Push Perubahan Kode ke Branch Utama
+### Langkah 2: Perbarui Versi di package.json & Catatan Update (Changelog)
+Sebelum melakukan commit dan tagging, pastikan Anda memperbarui nomor versi dan catatan pembaruan rilis:
+1. **[package.json](file:///D:/Coding/kaostudio_fe/package.json)**: Ubah properti `"version"` ke nomor versi baru (contoh: `"1.2.0"`).
+2. **[src/config/changelog.ts](file:///D:/Coding/kaostudio_fe/src/config/changelog.ts)**: Tambahkan riwayat rilis baru pada array `changelogHistory` di bagian paling atas:
+   ```typescript
+   export const changelogHistory: ReleaseNote[] = [
+       {
+           version: "1.2.0",
+           date: "27 Juli 2026",
+           title: "Judul Singkat Pembaruan Fitur Rilis",
+           badge: "Versi Terbaru",
+       },
+       // ... versi terdahulu
+   ];
+   ```
+
+### Langkah 3: Commit dan Push Perubahan Kode ke Branch Utama
 Sebelum membuat tag versi baru, pastikan seluruh kode terbaru Anda sudah dikomit dan didorong ke branch utama (`main`):
 ```bash
 # 1. Tambahkan semua perubahan kode ke staging area
 git add .
 
 # 2. Komit perubahan dengan pesan deskriptif
-git commit -m "feat: tambah fitur baru yang ingin dirilis"
+git commit -m "feat: release version v1.2.0 with custom jersey and changelog"
 
 # 3. Push komit ke remote repository
 git push origin main
 ```
 
-### Langkah 3: Buat Tag Versi Baru di Lokal
-Jalankan perintah berikut untuk menandai komit terakhir Anda sebagai versi rilis baru (ganti `v1.0.0` dengan nomor versi rilis Anda):
+### Langkah 4: Buat Tag Versi Baru di Lokal
+Jalankan perintah berikut untuk menandai komit terakhir Anda sebagai versi rilis baru (ganti `v1.2.0` dengan nomor versi rilis Anda):
 ```bash
-git tag v1.0.0
+git tag v1.2.0
 ```
 
 *Catatan: Anda juga bisa menambahkan pesan deskripsi pada tag menggunakan parameter `-a` (annotated tag):*
 ```bash
-git tag -a v1.0.0 -m "Rilis versi 1.0.0 - Deskripsi Fitur Rilis"
+git tag -a v1.2.0 -m "Rilis versi 1.2.0 - Custom Jersey & Top Announcement Banner"
 ```
 
-### Langkah 4: Push Tag ke GitHub
+### Langkah 5: Push Tag ke GitHub
 Dorong tag baru tersebut ke repositori GitHub untuk memicu alur GitHub Actions:
 ```bash
-git push origin v1.0.0
+git push origin v1.2.0
 ```
 
 ---

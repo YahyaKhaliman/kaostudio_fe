@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, onMounted, onUnmounted, nextTick, computed } from "vue";
 import ConfiguratorCanvas from "./components/configuratorCanvas.vue";
 import ControlPanel from "./components/controlPanel.vue";
 import {
@@ -15,16 +15,54 @@ import {
     PhCaretDown,
     PhCheckCircle,
     PhShieldCheck,
+    PhSparkle,
 } from "@phosphor-icons/vue";
 import { useConfiguratorStore } from "./stores/configurator";
 import { useAuthStore } from "./stores/authStore";
 import { fetchMockupDesign } from "./services/api";
 import packageJson from "../package.json";
+import { changelogHistory } from "./config/changelog";
 import EstimasiHargaModal from "./components/estimasiHarga.vue";
 import LoginModal from "./components/loginModal.vue";
 
-const appVersion = packageJson.version;
+const latestRelease = computed(() => changelogHistory[0] || null);
+const appVersion = latestRelease.value?.version || packageJson.version;
 const showGuide = ref(false);
+const showUpdateBanner = ref(false);
+
+const latestUpdateText = computed(() => {
+    if (!latestRelease.value) return "Pembaruan Fitur Terbaru";
+    return latestRelease.value.title;
+});
+
+const checkUpdateBannerVisibility = () => {
+    const lastSeenVersion = localStorage.getItem("kaostudio_last_seen_version");
+    const dismissedAt = localStorage.getItem("kaostudio_banner_dismissed_at");
+
+    if (lastSeenVersion !== appVersion) {
+        // Versi baru rilis dari pengembang -> langsung tampilkan banner update!
+        showUpdateBanner.value = true;
+    } else if (dismissedAt) {
+        // Jika sudah pernah ditutup, cek durasi beberapa minggu (misal 14 hari)
+        const fourteenDaysInMs = 14 * 24 * 60 * 60 * 1000;
+        if (Date.now() - Number(dismissedAt) > fourteenDaysInMs) {
+            showUpdateBanner.value = true;
+        } else {
+            showUpdateBanner.value = false;
+        }
+    } else {
+        showUpdateBanner.value = true;
+    }
+};
+
+const dismissUpdateBanner = () => {
+    showUpdateBanner.value = false;
+    localStorage.setItem("kaostudio_last_seen_version", appVersion);
+    localStorage.setItem(
+        "kaostudio_banner_dismissed_at",
+        Date.now().toString(),
+    );
+};
 const store = useConfiguratorStore();
 const authStore = useAuthStore();
 const showPricingEstimation = ref(false);
@@ -144,11 +182,16 @@ const checkAndLoadSharedDesign = async () => {
                 if (parsedState.shirtType)
                     store.currentShirtType = parsedState.shirtType;
                 if (parsedState.sizes)
-                    store.orderQuantities = { ...store.orderQuantities, ...parsedState.sizes };
+                    store.orderQuantities = {
+                        ...store.orderQuantities,
+                        ...parsedState.sizes,
+                    };
                 if (parsedState.currentSize) {
                     store.currentSize = parsedState.currentSize;
                 } else if (parsedState.sizes) {
-                    const activeEntry = Object.entries(parsedState.sizes).find(([_, qty]) => Number(qty) > 0);
+                    const activeEntry = Object.entries(parsedState.sizes).find(
+                        ([_, qty]) => Number(qty) > 0,
+                    );
                     if (activeEntry) {
                         store.currentSize = activeEntry[0] as any;
                     } else {
@@ -206,6 +249,9 @@ onMounted(() => {
             "(prefers-color-scheme: dark)",
         ).matches;
     }
+    // Periksa status dan visibilitas banner update versi aplikasi
+    checkUpdateBannerVisibility();
+
     updateDarkClass();
 });
 
@@ -316,6 +362,47 @@ const handleUpdateRotation = (angle: number) => {
             class="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-white/10 dark:bg-indigo-500/10 blur-[150px] pointer-events-none"
         ></div>
 
+        <!-- Announcement Banner Update (Ultra-Modern Glassmorphism & Animated Shimmer Border) -->
+        <Transition name="banner-slide">
+            <div
+                v-if="showUpdateBanner"
+                class="bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl text-slate-700 dark:text-slate-200 text-xs py-2.5 px-4 mb-2.5 sm:mb-3 flex items-center justify-between shadow-md relative z-50 transition-all duration-300 group overflow-hidden border-b border-sky-200/50 dark:border-slate-800/80"
+            >
+                <!-- Animated Gradient Shimmer Line at Bottom Border -->
+                <div class="absolute bottom-0 inset-x-0 h-[2px] animate-shimmer-border"></div>
+
+                <div class="flex items-center gap-2.5 mx-auto text-center font-medium max-w-4xl relative z-10">
+                    <!-- Badge Versi dengan Animated Pulse Dot & Sparkle Spin -->
+                    <span class="px-2.5 py-0.5 rounded-full bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 border border-sky-500/25 text-[9.5px] font-black uppercase tracking-wider shrink-0 flex items-center gap-1.5 shadow-xs group-hover:scale-105 transition-transform duration-300">
+                        <span class="relative flex h-2 w-2">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                        </span>
+                        <PhSparkle :size="12" weight="bold" class="text-sky-500 animate-spin-slow" />
+                        v{{ appVersion }} Update
+                    </span>
+
+                    <!-- Teks Update dengan Sorotan Font Gradient -->
+                    <span class="truncate text-slate-700 dark:text-slate-300 font-medium">
+                        <strong class="font-black bg-gradient-to-r from-sky-600 to-indigo-600 dark:from-sky-400 dark:to-indigo-400 bg-clip-text text-transparent mr-1">
+                            Apa Yang Baru:
+                        </strong>
+                        <span>{{ latestUpdateText }}</span>
+                    </span>
+                </div>
+
+                <!-- Tombol Tutup 'X' dengan Ring Hover Effect -->
+                <button
+                    @click="dismissUpdateBanner"
+                    class="p-1 rounded-xl hover:bg-slate-200/60 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all cursor-pointer shrink-0 ml-2 active:scale-90 relative z-10"
+                    title="Tutup Banner Update"
+                    type="button"
+                >
+                    <PhX :size="15" weight="bold" />
+                </button>
+            </div>
+        </Transition>
+
         <!-- Navbar / Header -->
         <header
             class="bg-white/85 dark:bg-slate-900/85 border border-sky-100/60 dark:border-slate-800/80 px-4 sm:px-6 py-3 flex items-center justify-between shadow-lg dark:shadow-slate-950/40 backdrop-blur-md sticky top-3 sm:top-4 z-50 max-w-7xl mx-auto w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] rounded-2xl transition-all duration-300"
@@ -407,7 +494,6 @@ const handleUpdateRotation = (angle: number) => {
                         weight="bold"
                         class="text-sky-700 group-hover:rotate-45 transition-transform duration-300"
                     />
-                    <!-- <span class="hidden sm:inline">Panduan</span> -->
                 </button>
 
                 <!-- Tombol Profile / Login User (Khusus Ikon dengan Pembeda Status Login) -->
@@ -521,15 +607,6 @@ const handleUpdateRotation = (angle: number) => {
                 <div
                     class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-sky-400/40 to-transparent"
                 ></div>
-
-                <h2
-                    class="text-xs font-bold text-slate-500 mb-6 tracking-widest uppercase flex items-center gap-2"
-                >
-                    <span
-                        class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"
-                    ></span>
-                    Workspace Studio
-                </h2>
                 <ConfiguratorCanvas ref="canvasRef" />
             </div>
 
@@ -616,13 +693,21 @@ const handleUpdateRotation = (angle: number) => {
                                 1
                             </div>
                             <div class="space-y-1">
-                                <h4 class="font-bold text-sm text-sky-950 dark:text-white">
+                                <h4
+                                    class="font-bold text-sm text-sky-950 dark:text-white"
+                                >
                                     Pilih Produk & Motif Jersey
                                 </h4>
                                 <p
                                     class="text-[11px] text-slate-600 dark:text-slate-350 leading-relaxed"
                                 >
-                                    Pilih jenis pakaian (Kaos, Polo, atau <strong>Jersey Custom</strong>) dan sisi (Depan/Belakang). Khusus <strong>Jersey</strong>, buka accordion <strong>Custom Motif Jersey</strong> untuk unggah motif sublimasi, pilih preset, serta sesuaikan skala & warna dasar.
+                                    Pilih jenis pakaian (Kaos, Polo, atau
+                                    <strong>Jersey Custom</strong>) dan sisi
+                                    (Depan/Belakang). Khusus
+                                    <strong>Jersey</strong>, buka accordion
+                                    <strong>Custom Motif Jersey</strong> untuk
+                                    unggah motif sublimasi, pilih preset, serta
+                                    sesuaikan skala & warna dasar.
                                 </p>
                             </div>
                         </div>
@@ -635,7 +720,9 @@ const handleUpdateRotation = (angle: number) => {
                                 2
                             </div>
                             <div class="space-y-1">
-                                <h4 class="font-bold text-sm text-sky-950 dark:text-white">
+                                <h4
+                                    class="font-bold text-sm text-sky-950 dark:text-white"
+                                >
                                     Tambahkan Teks Desain
                                 </h4>
                                 <p
@@ -658,7 +745,9 @@ const handleUpdateRotation = (angle: number) => {
                                 3
                             </div>
                             <div class="space-y-1">
-                                <h4 class="font-bold text-sm text-sky-950 dark:text-white">
+                                <h4
+                                    class="font-bold text-sm text-sky-950 dark:text-white"
+                                >
                                     Unggah Logo / Gambar
                                 </h4>
                                 <p
@@ -680,7 +769,9 @@ const handleUpdateRotation = (angle: number) => {
                                 4
                             </div>
                             <div class="space-y-1">
-                                <h4 class="font-bold text-sm text-sky-950 dark:text-white">
+                                <h4
+                                    class="font-bold text-sm text-sky-950 dark:text-white"
+                                >
                                     Latar Belakang Mockup
                                 </h4>
                                 <p
@@ -702,7 +793,9 @@ const handleUpdateRotation = (angle: number) => {
                                 5
                             </div>
                             <div class="space-y-1">
-                                <h4 class="font-bold text-sm text-sky-950 dark:text-white">
+                                <h4
+                                    class="font-bold text-sm text-sky-950 dark:text-white"
+                                >
                                     Atur Posisi & Lapisan
                                 </h4>
                                 <p
@@ -724,14 +817,20 @@ const handleUpdateRotation = (angle: number) => {
                                 6
                             </div>
                             <div class="space-y-1">
-                                <h4 class="font-bold text-sm text-sky-950 dark:text-white">
+                                <h4
+                                    class="font-bold text-sm text-sky-950 dark:text-white"
+                                >
                                     Unduh & Estimasi Harga
                                 </h4>
                                 <p
                                     class="text-[11px] text-slate-600 dark:text-slate-350 leading-relaxed"
                                 >
                                     Gunakan <strong>Unduh Sablon</strong> (PNG
-                                    transparan) atau <strong>Unduh Mockup</strong> (JPG). Untuk kaos biasa, hitung estimasi biaya otomatis. Khusus <strong>Jersey</strong>, konsultasikan harga via admin.
+                                    transparan) atau
+                                    <strong>Unduh Mockup</strong> (JPG). Untuk
+                                    kaos biasa, hitung estimasi biaya otomatis.
+                                    Khusus <strong>Jersey</strong>,
+                                    konsultasikan harga via admin.
                                 </p>
                             </div>
                         </div>
@@ -904,5 +1003,36 @@ body {
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
+}
+
+/* Animasi Banner Update Mikro-Interaktif */
+@keyframes shimmer-line {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.animate-shimmer-border {
+    background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.8), rgba(99, 102, 241, 0.9), rgba(14, 165, 233, 0.8), transparent);
+    background-size: 200% 100%;
+    animation: shimmer-line 3s infinite linear;
+}
+
+@keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+    animation: spin-slow 8s linear infinite;
+}
+
+.banner-slide-enter-active,
+.banner-slide-leave-active {
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.banner-slide-enter-from,
+.banner-slide-leave-to {
+    opacity: 0;
+    transform: translateY(-100%);
 }
 </style>

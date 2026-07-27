@@ -63,6 +63,46 @@ const syncPrintQties = () => {
     qtyPrintXXXL.value = qtyXXXL.value;
 };
 
+// Pengaman reaktif agar seluruh input kuantitas tidak bisa kurang dari 0 atau bernilai minus
+watch(
+    [
+        qtyS,
+        qtyM,
+        qtyL,
+        qtyXL,
+        qtyXXL,
+        qtyXXXL,
+        qtyPrintS,
+        qtyPrintM,
+        qtyPrintL,
+        qtyPrintXL,
+        qtyPrintXXL,
+        qtyPrintXXXL,
+    ],
+    () => {
+        if (qtyS.value < 0 || isNaN(qtyS.value)) qtyS.value = 0;
+        if (qtyM.value < 0 || isNaN(qtyM.value)) qtyM.value = 0;
+        if (qtyL.value < 0 || isNaN(qtyL.value)) qtyL.value = 0;
+        if (qtyXL.value < 0 || isNaN(qtyXL.value)) qtyXL.value = 0;
+        if (qtyXXL.value < 0 || isNaN(qtyXXL.value)) qtyXXL.value = 0;
+        if (qtyXXXL.value < 0 || isNaN(qtyXXXL.value)) qtyXXXL.value = 0;
+
+        if (qtyPrintS.value < 0 || isNaN(qtyPrintS.value)) qtyPrintS.value = 0;
+        if (qtyPrintM.value < 0 || isNaN(qtyPrintM.value)) qtyPrintM.value = 0;
+        if (qtyPrintL.value < 0 || isNaN(qtyPrintL.value)) qtyPrintL.value = 0;
+        if (qtyPrintXL.value < 0 || isNaN(qtyPrintXL.value)) qtyPrintXL.value = 0;
+        if (qtyPrintXXL.value < 0 || isNaN(qtyPrintXXL.value)) qtyPrintXXL.value = 0;
+        if (qtyPrintXXXL.value < 0 || isNaN(qtyPrintXXXL.value)) qtyPrintXXXL.value = 0;
+    }
+);
+
+// Mencegah pengetikan karakter minus '-' atau eksponensial 'e' pada elemen input number
+const preventNegativeKey = (e: KeyboardEvent) => {
+    if (e.key === "-" || e.key === "e" || e.key === "E") {
+        e.preventDefault();
+    }
+};
+
 export interface DesignItem {
     id: string;
     side: "front" | "back";
@@ -74,13 +114,28 @@ export interface DesignItem {
     service: string;
 }
 
-// Jenis Jasa terpilih per objek/item desain
-const selectedService = ref<string>("none");
+// Jenis Jasa terpilih (Computed secara dinamis berdasarkan item desain & pilihan sisi)
 const frontService = ref<string>("none");
 const backService = ref<string>("none");
 
 const designItems = ref<DesignItem[]>([]);
 const designServiceMap = ref<Record<string, string>>({});
+
+const selectedService = computed<string>(() => {
+    if (designItems.value.length > 0) {
+        const activeItem = designItems.value.find(
+            (item) => item.service && item.service !== "none"
+        );
+        if (activeItem) return activeItem.service;
+    }
+    if (frontService.value && frontService.value !== "none") {
+        return frontService.value;
+    }
+    if (backService.value && backService.value !== "none") {
+        return backService.value;
+    }
+    return "none";
+});
 
 // Detail Warna Polyflex jika PL terpilih
 const isPolyflexGold = ref(false);
@@ -1527,6 +1582,7 @@ watch(showPenawaranModal, (isOpen) => {
                                             v-model.number="qtyS"
                                             type="number"
                                             min="0"
+                                            @keydown="preventNegativeKey"
                                             placeholder="0"
                                             class="w-full px-2.5 py-1.5 rounded-lg border border-sky-105/50 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs font-bold dark:text-white focus:ring-1 focus:ring-sky-500 focus:outline-none"
                                         />
@@ -1535,6 +1591,7 @@ watch(showPenawaranModal, (isOpen) => {
                                             v-model.number="qtyM"
                                             type="number"
                                             min="0"
+                                            @keydown="preventNegativeKey"
                                             placeholder="0"
                                             class="w-full px-2.5 py-1.5 rounded-lg border border-sky-105/50 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs font-bold dark:text-white focus:ring-1 focus:ring-sky-500 focus:outline-none"
                                         />
@@ -1543,6 +1600,7 @@ watch(showPenawaranModal, (isOpen) => {
                                             v-model.number="qtyL"
                                             type="number"
                                             min="0"
+                                            @keydown="preventNegativeKey"
                                             placeholder="0"
                                             class="w-full px-2.5 py-1.5 rounded-lg border border-sky-105/50 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs font-bold dark:text-white focus:ring-1 focus:ring-sky-500 focus:outline-none"
                                         />
@@ -1551,6 +1609,7 @@ watch(showPenawaranModal, (isOpen) => {
                                             v-model.number="qtyXL"
                                             type="number"
                                             min="0"
+                                            @keydown="preventNegativeKey"
                                             placeholder="0"
                                             class="w-full px-2.5 py-1.5 rounded-lg border border-sky-105/50 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs font-bold dark:text-white focus:ring-1 focus:ring-sky-500 focus:outline-none"
                                         />
@@ -1559,6 +1618,7 @@ watch(showPenawaranModal, (isOpen) => {
                                             v-model.number="qtyXXL"
                                             type="number"
                                             min="0"
+                                            @keydown="preventNegativeKey"
                                             placeholder="0"
                                             class="w-full px-2.5 py-1.5 rounded-lg border border-sky-105/50 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs font-bold dark:text-white focus:ring-1 focus:ring-sky-500 focus:outline-none"
                                         />
@@ -1567,6 +1627,7 @@ watch(showPenawaranModal, (isOpen) => {
                                             v-model.number="qtyXXXL"
                                             type="number"
                                             min="0"
+                                            @keydown="preventNegativeKey"
                                             placeholder="0"
                                             class="w-full px-2.5 py-1.5 rounded-lg border border-sky-105/50 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs font-bold dark:text-white focus:ring-1 focus:ring-sky-500 focus:outline-none"
                                         />
@@ -1619,6 +1680,7 @@ watch(showPenawaranModal, (isOpen) => {
                                             v-model.number="qtyPrintS"
                                             type="number"
                                             min="0"
+                                            @keydown="preventNegativeKey"
                                             placeholder="0"
                                             class="w-full px-2.5 py-1.5 rounded-lg border border-sky-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs font-bold text-sky-600 dark:text-sky-400 focus:ring-1 focus:ring-sky-500 focus:outline-none"
                                         />
@@ -1627,6 +1689,7 @@ watch(showPenawaranModal, (isOpen) => {
                                             v-model.number="qtyPrintM"
                                             type="number"
                                             min="0"
+                                            @keydown="preventNegativeKey"
                                             placeholder="0"
                                             class="w-full px-2.5 py-1.5 rounded-lg border border-sky-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs font-bold text-sky-600 dark:text-sky-400 focus:ring-1 focus:ring-sky-500 focus:outline-none"
                                         />
@@ -1635,6 +1698,7 @@ watch(showPenawaranModal, (isOpen) => {
                                             v-model.number="qtyPrintL"
                                             type="number"
                                             min="0"
+                                            @keydown="preventNegativeKey"
                                             placeholder="0"
                                             class="w-full px-2.5 py-1.5 rounded-lg border border-sky-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs font-bold text-sky-600 dark:text-sky-400 focus:ring-1 focus:ring-sky-500 focus:outline-none"
                                         />
@@ -1643,6 +1707,7 @@ watch(showPenawaranModal, (isOpen) => {
                                             v-model.number="qtyPrintXL"
                                             type="number"
                                             min="0"
+                                            @keydown="preventNegativeKey"
                                             placeholder="0"
                                             class="w-full px-2.5 py-1.5 rounded-lg border border-sky-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs font-bold text-sky-600 dark:text-sky-400 focus:ring-1 focus:ring-sky-500 focus:outline-none"
                                         />
@@ -1651,6 +1716,7 @@ watch(showPenawaranModal, (isOpen) => {
                                             v-model.number="qtyPrintXXL"
                                             type="number"
                                             min="0"
+                                            @keydown="preventNegativeKey"
                                             placeholder="0"
                                             class="w-full px-2.5 py-1.5 rounded-lg border border-sky-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs font-bold text-sky-600 dark:text-sky-400 focus:ring-1 focus:ring-sky-500 focus:outline-none"
                                         />
@@ -1659,6 +1725,7 @@ watch(showPenawaranModal, (isOpen) => {
                                             v-model.number="qtyPrintXXXL"
                                             type="number"
                                             min="0"
+                                            @keydown="preventNegativeKey"
                                             placeholder="0"
                                             class="w-full px-2.5 py-1.5 rounded-lg border border-sky-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-center text-xs font-bold text-sky-600 dark:text-sky-400 focus:ring-1 focus:ring-sky-500 focus:outline-none"
                                         />

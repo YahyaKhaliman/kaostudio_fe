@@ -19,19 +19,69 @@ const generateUUID = (): string => {
   return Math.random().toString(36).slice(2, 11)
 }
 
+export type JerseyPartKey = 'body' | 'leftSleeve' | 'rightSleeve' | 'collar'
+
+export interface JerseyPartConfig {
+  patternUrl: string | null
+  patternScale: number
+  patternRotation: number
+  patternOffsetX: number
+  patternOffsetY: number
+  patternRepeat: 'repeat' | 'no-repeat'
+  baseColor: string
+}
+
 export const useConfiguratorStore = defineStore('configurator', () => {
   const currentView = ref<ViewType>('front')
   const shirtColor = ref<string>('#ffffff') // default white
   const currentShirtType = ref<ShirtType>('tshirt')
 
-  // State kustomisasi motif jersey
-  const jerseyPatternUrl = ref<string | null>(null)
-  const jerseyPatternScale = ref<number>(1.0)
-  const jerseyPatternRotation = ref<number>(0)
-  const jerseyPatternOffsetX = ref<number>(0)
-  const jerseyPatternOffsetY = ref<number>(0)
-  const jerseyPatternRepeat = ref<'repeat' | 'no-repeat'>('repeat')
-  const jerseyBaseColor = ref<string>('#ffffff')
+  // State kustomisasi multi-bagian jersey (Badan, Lengan Kiri, Lengan Kanan, Kerah)
+  const activeJerseyPart = ref<JerseyPartKey>('body')
+  const jerseyParts = ref<Record<JerseyPartKey, JerseyPartConfig>>({
+    body: { patternUrl: null, patternScale: 1.0, patternRotation: 0, patternOffsetX: 0, patternOffsetY: 0, patternRepeat: 'repeat', baseColor: '#ffffff' },
+    leftSleeve: { patternUrl: null, patternScale: 1.0, patternRotation: 0, patternOffsetX: 0, patternOffsetY: 0, patternRepeat: 'repeat', baseColor: '#ffffff' },
+    rightSleeve: { patternUrl: null, patternScale: 1.0, patternRotation: 0, patternOffsetX: 0, patternOffsetY: 0, patternRepeat: 'repeat', baseColor: '#ffffff' },
+    collar: { patternUrl: null, patternScale: 1.0, patternRotation: 0, patternOffsetX: 0, patternOffsetY: 0, patternRepeat: 'repeat', baseColor: '#ffffff' },
+  })
+
+  // Computed getters & setters dinamis yang merujuk ke bagian jersey aktif
+  const jerseyPatternUrl = computed({
+    get: () => jerseyParts.value[activeJerseyPart.value].patternUrl,
+    set: (val: string | null) => { jerseyParts.value[activeJerseyPart.value].patternUrl = val }
+  })
+  const jerseyPatternScale = computed({
+    get: () => jerseyParts.value[activeJerseyPart.value].patternScale,
+    set: (val: number) => { jerseyParts.value[activeJerseyPart.value].patternScale = val }
+  })
+  const jerseyPatternRotation = computed({
+    get: () => jerseyParts.value[activeJerseyPart.value].patternRotation,
+    set: (val: number) => { jerseyParts.value[activeJerseyPart.value].patternRotation = val }
+  })
+  const jerseyPatternOffsetX = computed({
+    get: () => jerseyParts.value[activeJerseyPart.value].patternOffsetX,
+    set: (val: number) => { jerseyParts.value[activeJerseyPart.value].patternOffsetX = val }
+  })
+  const jerseyPatternOffsetY = computed({
+    get: () => jerseyParts.value[activeJerseyPart.value].patternOffsetY,
+    set: (val: number) => { jerseyParts.value[activeJerseyPart.value].patternOffsetY = val }
+  })
+  const jerseyPatternRepeat = computed({
+    get: () => jerseyParts.value[activeJerseyPart.value].patternRepeat,
+    set: (val: 'repeat' | 'no-repeat') => { jerseyParts.value[activeJerseyPart.value].patternRepeat = val }
+  })
+  const jerseyBaseColor = computed({
+    get: () => jerseyParts.value[activeJerseyPart.value].baseColor,
+    set: (val: string) => { jerseyParts.value[activeJerseyPart.value].baseColor = val }
+  })
+
+  const applyJerseyConfigToAllParts = () => {
+    const currentConfig = { ...jerseyParts.value[activeJerseyPart.value] }
+    const keys: JerseyPartKey[] = ['body', 'leftSleeve', 'rightSleeve', 'collar']
+    keys.forEach(k => {
+      jerseyParts.value[k] = { ...currentConfig }
+    })
+  }
   
   // State API dinamis untuk produk, warna, dan tarif jasa
   const selectedFabric = ref<string>('COMBED 30S')
@@ -296,6 +346,8 @@ export const useConfiguratorStore = defineStore('configurator', () => {
     currentView,
     shirtColor,
     currentShirtType,
+    activeJerseyPart,
+    jerseyParts,
     jerseyPatternUrl,
     jerseyPatternScale,
     jerseyPatternRotation,
@@ -303,6 +355,7 @@ export const useConfiguratorStore = defineStore('configurator', () => {
     jerseyPatternOffsetY,
     jerseyPatternRepeat,
     jerseyBaseColor,
+    applyJerseyConfigToAllParts,
     resetJerseyPatternTransform,
     selectedFabric,
     productsData,

@@ -16,6 +16,9 @@ import {
     PhMinus,
     PhArrowCounterClockwise,
     PhMagnifyingGlass,
+    PhTShirt,
+    PhArrowsClockwise,
+    PhEye,
 } from "@phosphor-icons/vue";
 
 // Kustomisasi visual garis bantu (bounding box) & tombol kontrol Fabric.js agar bertema premium
@@ -480,7 +483,7 @@ watch(
 );
 
 // Memperbarui warna/motif kaos secara dinamis berdasarkan state store
-const updateMockupColor = () => {
+function updateMockupColor() {
     if (store.currentShirtType === "jersey") {
         const patternOpts = {
             patternImg: loadedPatternImage.value,
@@ -1823,6 +1826,16 @@ const updateSelectedRotation = (angle: number) => {
     }
 };
 
+const cycleView = () => {
+    if (store.currentView === "front") {
+        store.currentView = "back";
+    } else if (store.currentView === "back") {
+        store.currentView = "both";
+    } else {
+        store.currentView = "front";
+    }
+};
+
 defineExpose({
     fabricCanvas,
     selectedObject,
@@ -1845,11 +1858,37 @@ defineExpose({
     deselectObject,
     cropSelectedImage,
     updateSelectedRotation,
+    cycleView,
 });
 </script>
 
 <template>
     <div class="flex flex-col items-center justify-center p-2 w-full">
+        <!-- Header Studio: Judul "WORKSPACE STUDIO" di Tengah & Tombol Pemindah Sisi di Kanan -->
+        <div class="w-full relative flex items-center justify-center mb-4 px-1">
+            <h2 class="text-xs font-bold text-slate-500 tracking-widest uppercase flex items-center justify-center gap-2 select-none">
+                <span class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span>
+                Workspace Studio
+            </h2>
+
+            <button
+                @click="cycleView"
+                type="button"
+                class="absolute right-1 px-3 py-1.5 bg-white/85 dark:bg-slate-900/85 hover:bg-white dark:hover:bg-slate-900 backdrop-blur-md rounded-xl border border-sky-100 dark:border-slate-800 shadow-xs hover:shadow-md transition-all duration-200 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer active:scale-95 group z-30"
+                :title="`Beralih tampilan (Saat ini: ${store.currentView === 'front' ? 'Tampak Depan' : store.currentView === 'back' ? 'Tampak Belakang' : 'Preview 2 Sisi'})`"
+            >
+                <div class="p-1 rounded-lg bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 group-hover:rotate-180 transition-transform duration-300">
+                    <PhArrowsClockwise :size="13" weight="bold" />
+                </div>
+                <span class="text-[10.5px] font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1">
+                    <span class="text-slate-400 font-medium">Sisi:</span>
+                    <span class="text-sky-600 dark:text-sky-400 uppercase tracking-wider">
+                        {{ store.currentView === 'front' ? 'Depan' : store.currentView === 'back' ? 'Belakang' : '2 Sisi' }}
+                    </span>
+                </span>
+            </button>
+        </div>
+
         <!-- Container Mockup Kaos (Mode Edit - Hanya tampil jika bukan mode 'both') -->
         <div
             v-show="store.currentView !== 'both'"
