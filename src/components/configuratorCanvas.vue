@@ -379,6 +379,23 @@ const getStandardSnapPoints = () => {
                 { name: "Belakang Tengah Bawah", x: w / 1.9, y: h * 0.8 },
             ];
         }
+    } else if (type === "jersey") {
+        if (displayedView.value === "front") {
+            return [
+                { name: "Tengah Dada", x: w / 2, y: h * 0.16 },
+                { name: "Dada Kanan", x: w * 0.22, y: h * 0.16 },
+                { name: "Dada Kiri", x: w * 0.78, y: h * 0.16 },
+                { name: "Bawah Kiri", x: w * 0.8, y: h * 0.8 },
+                { name: "Bawah Kanan", x: w * 0.2, y: h * 0.8 },
+                { name: "Tengah Jersey", x: w / 2, y: h / 2.2 },
+            ];
+        } else {
+            return [
+                { name: "Belakang Tengah", x: w / 2, y: h / 2.5 },
+                { name: "Belakang Tengah Atas", x: w / 2, y: h * 0.08 },
+                { name: "Belakang Tengah Bawah", x: w / 2, y: h * 0.8 },
+            ];
+        }
     }
 
     // Default fallback jika jenis tidak cocok

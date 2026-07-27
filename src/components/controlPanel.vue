@@ -1494,8 +1494,8 @@ watch(
                             </div>
                         </div>
 
-                        <!-- Pilihan Warna Kaos (Consolidated & Non-Repetitive) -->
-                        <div class="space-y-3">
+                        <!-- Pilihan Warna Kaos (Sembunyikan Jika Jenis Kaos Adalah Jersey) -->
+                        <div v-if="store.currentShirtType !== 'jersey'" class="space-y-3">
                             <div class="flex items-center justify-between">
                                 <label
                                     class="block text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wide"

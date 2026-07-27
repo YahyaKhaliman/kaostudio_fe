@@ -608,25 +608,21 @@ const handleUpdateRotation = (angle: number) => {
                     <div
                         class="grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto pr-1"
                     >
-                        <!-- Langkah 1: Konfigurasi Kaos -->
+                        <!-- Langkah 1: Konfigurasi Produk & Custom Jersey -->
                         <div class="flex gap-3">
                             <div
-                                class="flex-shrink-0 w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center font-black text-sm"
+                                class="flex-shrink-0 w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400 flex items-center justify-center font-black text-sm"
                             >
                                 1
                             </div>
                             <div class="space-y-1">
-                                <h4 class="font-bold text-sm text-sky-950">
-                                    Konfigurasi Kaos
+                                <h4 class="font-bold text-sm text-sky-950 dark:text-white">
+                                    Pilih Produk & Motif Jersey
                                 </h4>
                                 <p
-                                    class="text-[11px] text-slate-600 leading-relaxed"
+                                    class="text-[11px] text-slate-600 dark:text-slate-350 leading-relaxed"
                                 >
-                                    Pilih sisi kaos antara
-                                    <strong>Tampak Depan</strong> atau
-                                    <strong>Tampak Belakang</strong>. Gunakan
-                                    preset warna atau pemilih warna kustom untuk
-                                    mengubah warna dasar kain kaos.
+                                    Pilih jenis pakaian (Kaos, Polo, atau <strong>Jersey Custom</strong>) dan sisi (Depan/Belakang). Khusus <strong>Jersey</strong>, buka accordion <strong>Custom Motif Jersey</strong> untuk unggah motif sublimasi, pilih preset, serta sesuaikan skala & warna dasar.
                                 </p>
                             </div>
                         </div>
@@ -634,16 +630,16 @@ const handleUpdateRotation = (angle: number) => {
                         <!-- Langkah 2: Tambah Teks -->
                         <div class="flex gap-3">
                             <div
-                                class="flex-shrink-0 w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center font-black text-sm"
+                                class="flex-shrink-0 w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400 flex items-center justify-center font-black text-sm"
                             >
                                 2
                             </div>
                             <div class="space-y-1">
-                                <h4 class="font-bold text-sm text-sky-950">
+                                <h4 class="font-bold text-sm text-sky-950 dark:text-white">
                                     Tambahkan Teks Desain
                                 </h4>
                                 <p
-                                    class="text-[11px] text-slate-600 leading-relaxed"
+                                    class="text-[11px] text-slate-600 dark:text-slate-350 leading-relaxed"
                                 >
                                     Ketik tulisan Anda, pilih jenis font Google,
                                     atur warna, dan klik
@@ -657,16 +653,16 @@ const handleUpdateRotation = (angle: number) => {
                         <!-- Langkah 3: Unggah Logo/Gambar -->
                         <div class="flex gap-3">
                             <div
-                                class="flex-shrink-0 w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center font-black text-sm"
+                                class="flex-shrink-0 w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400 flex items-center justify-center font-black text-sm"
                             >
                                 3
                             </div>
                             <div class="space-y-1">
-                                <h4 class="font-bold text-sm text-sky-950">
+                                <h4 class="font-bold text-sm text-sky-950 dark:text-white">
                                     Unggah Logo / Gambar
                                 </h4>
                                 <p
-                                    class="text-[11px] text-slate-600 leading-relaxed"
+                                    class="text-[11px] text-slate-600 dark:text-slate-350 leading-relaxed"
                                 >
                                     Klik area dropzone atau seret file gambar
                                     (PNG transparan sangat disarankan) langsung
@@ -679,16 +675,16 @@ const handleUpdateRotation = (angle: number) => {
                         <!-- Langkah 4: Kustomisasi Latar Belakang -->
                         <div class="flex gap-3">
                             <div
-                                class="flex-shrink-0 w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center font-black text-sm"
+                                class="flex-shrink-0 w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400 flex items-center justify-center font-black text-sm"
                             >
                                 4
                             </div>
                             <div class="space-y-1">
-                                <h4 class="font-bold text-sm text-sky-950">
+                                <h4 class="font-bold text-sm text-sky-950 dark:text-white">
                                     Latar Belakang Mockup
                                 </h4>
                                 <p
-                                    class="text-[11px] text-slate-600 leading-relaxed"
+                                    class="text-[11px] text-slate-600 dark:text-slate-350 leading-relaxed"
                                 >
                                     Pilih backdrop studio yang sesuai: warna
                                     solid, pola catur transparan, studio radial
@@ -701,16 +697,16 @@ const handleUpdateRotation = (angle: number) => {
                         <!-- Langkah 5: Layering & Pengaturan -->
                         <div class="flex gap-3">
                             <div
-                                class="flex-shrink-0 w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center font-black text-sm"
+                                class="flex-shrink-0 w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400 flex items-center justify-center font-black text-sm"
                             >
                                 5
                             </div>
                             <div class="space-y-1">
-                                <h4 class="font-bold text-sm text-sky-950">
+                                <h4 class="font-bold text-sm text-sky-950 dark:text-white">
                                     Atur Posisi & Lapisan
                                 </h4>
                                 <p
-                                    class="text-[11px] text-slate-600 leading-relaxed"
+                                    class="text-[11px] text-slate-600 dark:text-slate-350 leading-relaxed"
                                 >
                                     Posisikan objek di area sablon dengan geser,
                                     putar, atau perbesar skala. Klik objek lalu
@@ -723,22 +719,19 @@ const handleUpdateRotation = (angle: number) => {
                         <!-- Langkah 6: Ekspor & Produksi -->
                         <div class="flex gap-3">
                             <div
-                                class="flex-shrink-0 w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center font-black text-sm"
+                                class="flex-shrink-0 w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400 flex items-center justify-center font-black text-sm"
                             >
                                 6
                             </div>
                             <div class="space-y-1">
-                                <h4 class="font-bold text-sm text-sky-950">
-                                    Unduh & Cetak
+                                <h4 class="font-bold text-sm text-sky-950 dark:text-white">
+                                    Unduh & Estimasi Harga
                                 </h4>
                                 <p
-                                    class="text-[11px] text-slate-600 leading-relaxed"
+                                    class="text-[11px] text-slate-600 dark:text-slate-350 leading-relaxed"
                                 >
                                     Gunakan <strong>Unduh Sablon</strong> (PNG
-                                    transparan resolusi tinggi) untuk langsung
-                                    naik cetak sablon DTF/DTG. Gunakan
-                                    <strong>Unduh Mockup</strong> (JPG) untuk
-                                    visualisasi mockup.
+                                    transparan) atau <strong>Unduh Mockup</strong> (JPG). Untuk kaos biasa, hitung estimasi biaya otomatis. Khusus <strong>Jersey</strong>, konsultasikan harga via admin.
                                 </p>
                             </div>
                         </div>
