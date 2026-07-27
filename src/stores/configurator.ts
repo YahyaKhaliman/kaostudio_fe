@@ -12,7 +12,7 @@ import { companyColors, presetColors, colorAliases } from '../utils/colors'
 
 export type ViewType = 'front' | 'back' | 'both'
 export type CanvasViewType = 'front' | 'back'
-export type ShirtType = 'tshirt' | 'longTshirt' | 'polo'
+export type ShirtType = 'tshirt' | 'longTshirt' | 'polo' | 'jersey'
 
 // Helper generator ID acak sederhana menggunakan Math.random()
 const generateUUID = (): string => {
@@ -23,6 +23,15 @@ export const useConfiguratorStore = defineStore('configurator', () => {
   const currentView = ref<ViewType>('front')
   const shirtColor = ref<string>('#ffffff') // default white
   const currentShirtType = ref<ShirtType>('tshirt')
+
+  // State kustomisasi motif jersey
+  const jerseyPatternUrl = ref<string | null>(null)
+  const jerseyPatternScale = ref<number>(1.0)
+  const jerseyPatternRotation = ref<number>(0)
+  const jerseyPatternOffsetX = ref<number>(0)
+  const jerseyPatternOffsetY = ref<number>(0)
+  const jerseyPatternRepeat = ref<'repeat' | 'no-repeat'>('repeat')
+  const jerseyBaseColor = ref<string>('#ffffff')
   
   // State API dinamis untuk produk, warna, dan tarif jasa
   const selectedFabric = ref<string>('COMBED 30S')
@@ -202,6 +211,15 @@ export const useConfiguratorStore = defineStore('configurator', () => {
     uploadedImages.value = uploadedImages.value.filter((img) => img.id !== id)
   }
 
+  const resetJerseyPatternTransform = () => {
+    jerseyPatternScale.value = 1.0
+    jerseyPatternRotation.value = 0
+    jerseyPatternOffsetX.value = 0
+    jerseyPatternOffsetY.value = 0
+    jerseyPatternRepeat.value = 'repeat'
+    jerseyBaseColor.value = '#ffffff'
+  }
+
   const saveToLocalStorage = () => {
     const dataToSave = {
       shirtColor: shirtColor.value,
@@ -210,7 +228,14 @@ export const useConfiguratorStore = defineStore('configurator', () => {
       backdropColor: backdropColor.value,
       customBackdropUrl: customBackdropUrl.value,
       currentSize: currentSize.value,
-      canvasStates: canvasStates.value
+      canvasStates: canvasStates.value,
+      jerseyPatternUrl: jerseyPatternUrl.value,
+      jerseyPatternScale: jerseyPatternScale.value,
+      jerseyPatternRotation: jerseyPatternRotation.value,
+      jerseyPatternOffsetX: jerseyPatternOffsetX.value,
+      jerseyPatternOffsetY: jerseyPatternOffsetY.value,
+      jerseyPatternRepeat: jerseyPatternRepeat.value,
+      jerseyBaseColor: jerseyBaseColor.value
     }
     localStorage.setItem('kaostudio_autosave', JSON.stringify(dataToSave))
   }
@@ -226,6 +251,13 @@ export const useConfiguratorStore = defineStore('configurator', () => {
         if (data.backdropColor) backdropColor.value = data.backdropColor
         if (data.customBackdropUrl) customBackdropUrl.value = data.customBackdropUrl
         if (data.currentSize) currentSize.value = data.currentSize
+        if (data.jerseyPatternUrl !== undefined) jerseyPatternUrl.value = data.jerseyPatternUrl
+        if (data.jerseyPatternScale !== undefined) jerseyPatternScale.value = data.jerseyPatternScale
+        if (data.jerseyPatternRotation !== undefined) jerseyPatternRotation.value = data.jerseyPatternRotation
+        if (data.jerseyPatternOffsetX !== undefined) jerseyPatternOffsetX.value = data.jerseyPatternOffsetX
+        if (data.jerseyPatternOffsetY !== undefined) jerseyPatternOffsetY.value = data.jerseyPatternOffsetY
+        if (data.jerseyPatternRepeat !== undefined) jerseyPatternRepeat.value = data.jerseyPatternRepeat
+        if (data.jerseyBaseColor !== undefined) jerseyBaseColor.value = data.jerseyBaseColor
         if (data.canvasStates) {
           canvasStates.value.front = data.canvasStates.front || null
           canvasStates.value.back = data.canvasStates.back || null
@@ -245,6 +277,8 @@ export const useConfiguratorStore = defineStore('configurator', () => {
     backdropType.value = 'solid'
     backdropColor.value = '#ffffff'
     customBackdropUrl.value = null
+    jerseyPatternUrl.value = null
+    resetJerseyPatternTransform()
     canvasStates.value = {
       front: null,
       back: null
@@ -262,6 +296,14 @@ export const useConfiguratorStore = defineStore('configurator', () => {
     currentView,
     shirtColor,
     currentShirtType,
+    jerseyPatternUrl,
+    jerseyPatternScale,
+    jerseyPatternRotation,
+    jerseyPatternOffsetX,
+    jerseyPatternOffsetY,
+    jerseyPatternRepeat,
+    jerseyBaseColor,
+    resetJerseyPatternTransform,
     selectedFabric,
     productsData,
     colorsData,

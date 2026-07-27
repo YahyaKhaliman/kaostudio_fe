@@ -6,7 +6,10 @@
 /**
  * Memuat gambar dari URL
  */
-const loadImage = (url: string): Promise<HTMLImageElement> => {
+/**
+ * Memuat gambar dari URL
+ */
+export const loadImage = (url: string): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
@@ -14,6 +17,87 @@ const loadImage = (url: string): Promise<HTMLImageElement> => {
     img.onerror = (err) => reject(err)
     img.src = url
   })
+}
+
+export interface JerseyPatternOptions {
+  patternImg?: HTMLImageElement | null
+  scale?: number
+  rotation?: number
+  offsetX?: number
+  offsetY?: number
+  repeat?: 'repeat' | 'no-repeat'
+  baseColor?: string
+}
+
+/**
+ * Merender motif kustom pada jersey dengan transformasi (scale, rotation, offset, repeat)
+ * dan menggabungkannya dengan tekstur lipatan & bayangan kain asli.
+ */
+export const colorizeJerseyWithPattern = (
+  canvas: HTMLCanvasElement,
+  patternOptions: JerseyPatternOptions
+): string => {
+  const w = canvas.width
+  const h = canvas.height
+
+  const resultCanvas = document.createElement('canvas')
+  resultCanvas.width = w
+  resultCanvas.height = h
+  const ctx = resultCanvas.getContext('2d')
+  if (!ctx) throw new Error('Gagal mendapatkan context 2D')
+
+  // 1. Gambar warna dasar
+  const baseColor = patternOptions.baseColor || '#ffffff'
+  ctx.fillStyle = baseColor
+  ctx.fillRect(0, 0, w, h)
+
+  // 2. Gambar motif jika ada
+  if (patternOptions.patternImg) {
+    const img = patternOptions.patternImg
+    const scale = patternOptions.scale ?? 1.0
+    const rotation = patternOptions.rotation ?? 0
+    const offsetX = patternOptions.offsetX ?? 0
+    const offsetY = patternOptions.offsetY ?? 0
+    const repeat = patternOptions.repeat ?? 'repeat'
+
+    ctx.save()
+    // Pindahkan origin ke pusat canvas + offset pengguna
+    ctx.translate(w / 2 + offsetX, h / 2 + offsetY)
+    ctx.rotate((rotation * Math.PI) / 180)
+    ctx.scale(scale, scale)
+
+    if (repeat === 'repeat') {
+      const pattern = ctx.createPattern(img, 'repeat')
+      if (pattern) {
+        ctx.fillStyle = pattern
+        const boundSize = Math.max(w, h) * 4
+        ctx.fillRect(-boundSize / 2, -boundSize / 2, boundSize, boundSize)
+      }
+    } else {
+      ctx.drawImage(img, -img.width / 2, -img.height / 2)
+    }
+    ctx.restore()
+  }
+
+  // 3. Potong motif/warna sesuai bentuk siluet jersey
+  ctx.globalCompositeOperation = 'destination-in'
+  ctx.drawImage(canvas, 0, 0)
+
+  // 4. Blend tekstur & bayangan jersey dengan multiply
+  ctx.globalCompositeOperation = 'multiply'
+  ctx.drawImage(canvas, 0, 0)
+
+  // 5. Mencerahkan kembali lipatan kain dengan screen blend (opasitas 18%)
+  ctx.globalCompositeOperation = 'screen'
+  ctx.globalAlpha = 0.18
+  ctx.drawImage(canvas, 0, 0)
+  ctx.globalAlpha = 1.0
+
+  // 6. Buang sisa warna yang bocor di luar area jersey
+  ctx.globalCompositeOperation = 'destination-in'
+  ctx.drawImage(canvas, 0, 0)
+
+  return resultCanvas.toDataURL('image/png')
 }
 
 /**

@@ -73,6 +73,7 @@ export interface ModelWarnaMap {
   tshirt: string[];
   longTshirt: string[];
   polo: string[];
+  jersey?: string[];
 }
 
 export type WarnaTersediaResponse = Record<string, ModelWarnaMap>; // Key: COMBED, POLO LACOS CVC

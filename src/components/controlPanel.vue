@@ -57,11 +57,50 @@ const showSizeGuide = ref(false);
 // State Accordion Panel Kontrol (Membuka panel secara mandiri dan bersamaan)
 const isShirtOpen = ref(true);
 const isShirtFullyOpen = ref(true);
+const isJerseyMotifOpen = ref(true);
 const isTextOpen = ref(false);
 const isUploadOpen = ref(false);
 const isBackdropOpen = ref(false);
 const isExportOpen = ref(false);
 const isExportFullyOpen = ref(false);
+
+const createPatternSVGDataUrl = (svgContent: string) => {
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgContent);
+};
+
+const jerseyPresets = [
+    {
+        name: 'Garis Olahraga',
+        url: createPatternSVGDataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="#0f172a"/><path d="M-20,20 L20,-20 L40,-20 L-20,40 Z M0,100 L100,0 L120,0 L0,120 Z M60,100 L100,60 L100,80 L80,100 Z" fill="#38bdf8"/><path d="M10,100 L100,10 L100,25 L25,100 Z" fill="#818cf8"/></svg>`),
+    },
+    {
+        name: 'Honeycomb',
+        url: createPatternSVGDataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="104" viewBox="0 0 120 104"><rect width="120" height="104" fill="#1e1b4b"/><path d="M60,0 L120,34.6 L120,104 L60,69.3 L0,104 L0,34.6 Z" fill="none" stroke="#6366f1" stroke-width="3"/><path d="M60,20 L100,43 L100,90 L60,67 L20,90 L20,43 Z" fill="#4338ca" opacity="0.6"/></svg>`),
+    },
+    {
+        name: 'Ombak Dynamic',
+        url: createPatternSVGDataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" fill="#0284c7"/><path d="M0 50 Q 50 20, 100 50 T 200 50 L 200 80 Q 150 50, 100 80 T 0 80 Z" fill="#38bdf8"/><path d="M0 120 Q 50 90, 100 120 T 200 120 L 200 150 Q 150 120, 100 150 T 0 150 Z" fill="#bae6fd"/></svg>`),
+    },
+    {
+        name: 'Batik Modern',
+        url: createPatternSVGDataUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><rect width="160" height="160" fill="#451a03"/><path d="M80 0 C40 40 40 120 80 160 C120 120 120 40 80 0 Z" fill="#d97706" opacity="0.8"/><path d="M0 80 C40 40 120 40 160 80 C120 120 40 120 0 80 Z" fill="#b45309" opacity="0.8"/><circle cx="80" cy="80" r="16" fill="#fef3c7"/></svg>`),
+    }
+];
+
+const handleJerseyPatternUpload = (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    if (target.files && target.files[0]) {
+        const file = target.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            if (e.target?.result) {
+                store.jerseyPatternUrl = e.target.result as string;
+                store.saveToLocalStorage();
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+};
 
 watch(isExportOpen, (isOpen) => {
     if (!isOpen) {
@@ -304,12 +343,22 @@ interface ShirtOption {
     id: string;
     label: string;
     fabric: string;
-    model: "tshirt" | "longTshirt" | "polo";
+    model: "tshirt" | "longTshirt" | "polo" | "jersey";
 }
 
 const shirtOptions = computed<ShirtOption[]>(() => {
     const options: ShirtOption[] = [];
     const fabrics = Object.keys(store.productsData); // ["COMBED 30S", "COMBED 24S", "POLO LACOS CVC"]
+
+    if (fabrics.length === 0) {
+        options.push(
+            { id: "tshirt", label: "Kaos Pendek", fabric: "COMBED 30S", model: "tshirt" },
+            { id: "longTshirt", label: "Kaos Panjang", fabric: "COMBED 30S", model: "longTshirt" },
+            { id: "polo", label: "Polo", fabric: "POLO LACOS CVC", model: "polo" },
+            { id: "jersey", label: "Jersey Custom Motif", fabric: "", model: "jersey" }
+        );
+        return options;
+    }
 
     fabrics.forEach((fabric) => {
         const products = store.productsData[fabric] || [];
@@ -347,12 +396,31 @@ const shirtOptions = computed<ShirtOption[]>(() => {
             });
         }
     });
+
+    // Tambahkan tepat SATU opsi Jersey tunggal dengan keterangan bahan kosong
+    options.push({
+        id: "jersey-custom",
+        label: "Jersey Custom Motif",
+        fabric: "",
+        model: "jersey",
+    });
+
     return options;
 });
 
 const activeOption = computed(() => {
     const fabric = store.selectedFabric;
     const model = store.currentShirtType;
+    if (model === "jersey") {
+        return (
+            shirtOptions.value.find((opt) => opt.model === "jersey") || {
+                id: "jersey-custom",
+                label: "Jersey Custom Motif",
+                fabric: "",
+                model: "jersey",
+            }
+        );
+    }
     return (
         shirtOptions.value.find(
             (opt) => opt.fabric === fabric && opt.model === model,
@@ -1057,6 +1125,7 @@ watch(
                                                             {{ opt.label }}
                                                         </div>
                                                         <div
+                                                            v-if="opt.fabric"
                                                             class="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium truncate"
                                                         >
                                                             {{ opt.fabric }}
@@ -1065,10 +1134,8 @@ watch(
                                                 </div>
                                                 <span
                                                     v-if="
-                                                        store.selectedFabric ===
-                                                            opt.fabric &&
-                                                        store.currentShirtType ===
-                                                            opt.model
+                                                        (opt.model === 'jersey' && store.currentShirtType === 'jersey') ||
+                                                        (store.selectedFabric === opt.fabric && store.currentShirtType === opt.model)
                                                     "
                                                     class="text-sky-500 font-extrabold text-[9px] flex-shrink-0"
                                                     >✓</span
@@ -1771,6 +1838,196 @@ watch(
                         </div>
                     </div>
                 </Transition>
+            </div>
+
+            <!-- Custom Motif Jersey Accordion (Tampil Khusus saat Jenis Jersey Dipilih) -->
+            <div
+                v-if="store.currentShirtType === 'jersey'"
+                class="border rounded-2xl overflow-hidden transition-all duration-300 bg-white/40 dark:bg-slate-900/10 border-sky-200 dark:border-slate-750 bg-white dark:bg-slate-900/30 shadow-[0_4px_20px_-2px_rgba(14,165,233,0.08)]"
+            >
+                <button
+                    @click="isJerseyMotifOpen = !isJerseyMotifOpen"
+                    class="w-full flex items-center justify-between p-3 rounded-2xl transition-all duration-300 text-left outline-none select-none bg-sky-50/70 dark:bg-slate-950/50 border-b border-sky-100/60 dark:border-slate-800/80 text-sky-950 dark:text-white font-extrabold cursor-pointer"
+                    type="button"
+                >
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400 scale-110">
+                            <PhSparkle :size="16" weight="bold" />
+                        </div>
+                        <div>
+                            <span class="text-[11px] font-black uppercase tracking-wider block">Custom Motif Jersey</span>
+                            <span class="text-[9px] font-medium text-slate-400 dark:text-slate-500 block mt-0.5">
+                                {{ store.jerseyPatternUrl ? 'Motif Kustom Aktif' : 'Unggah atau Pilih Motif Preset' }}
+                            </span>
+                        </div>
+                    </div>
+                    <PhCaretDown
+                        :size="14"
+                        weight="bold"
+                        class="text-slate-400 transition-transform duration-300 mr-1"
+                        :class="{ 'transform rotate-180 text-sky-500': isJerseyMotifOpen }"
+                    />
+                </button>
+
+                <div v-show="isJerseyMotifOpen" class="p-4 space-y-4">
+                    <!-- 1. Upload Motif File -->
+                    <div>
+                        <label class="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">
+                            Unggah Motif Kustom
+                        </label>
+                        <div class="flex gap-2 items-center">
+                            <label class="flex-1 border-2 border-dashed border-sky-200 dark:border-slate-750 hover:border-sky-400 rounded-xl p-3 flex items-center justify-center gap-2 cursor-pointer bg-slate-50/50 dark:bg-slate-950/30 transition-all text-xs font-bold text-sky-600 dark:text-sky-400">
+                                <PhUploadSimple :size="16" weight="bold" />
+                                <span>Upload Motif (PNG/JPG)</span>
+                                <input type="file" accept="image/*" class="hidden" @change="handleJerseyPatternUpload" />
+                            </label>
+                            <button
+                                v-if="store.jerseyPatternUrl"
+                                @click="store.jerseyPatternUrl = null; store.saveToLocalStorage()"
+                                class="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 text-red-500 rounded-xl hover:bg-red-100 transition-all text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                title="Hapus Motif"
+                                type="button"
+                            >
+                                <PhTrash :size="16" weight="bold" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 2. Preset Motif Cepat -->
+                    <div>
+                        <label class="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">
+                            Preset Motif Cepat
+                        </label>
+                        <div class="grid grid-cols-4 gap-2">
+                            <button
+                                v-for="preset in jerseyPresets"
+                                :key="preset.name"
+                                @click="store.jerseyPatternUrl = preset.url; store.saveToLocalStorage()"
+                                type="button"
+                                class="aspect-square rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden relative group hover:border-sky-500 transition-all cursor-pointer"
+                                :class="{ 'ring-2 ring-sky-500 border-sky-500': store.jerseyPatternUrl === preset.url }"
+                                :title="preset.name"
+                            >
+                                <img :src="preset.url" class="w-full h-full object-cover" />
+                                <span class="absolute bottom-0 inset-x-0 bg-slate-900/80 text-[8px] font-bold text-white text-center py-0.5 truncate px-0.5">
+                                    {{ preset.name }}
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 3. Control Sliders (Scale, Rotate, Offset X, Offset Y) -->
+                    <div v-if="store.jerseyPatternUrl" class="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                                Posisi & Ukuran Motif
+                            </span>
+                            <button
+                                @click="store.resetJerseyPatternTransform(); store.saveToLocalStorage()"
+                                class="text-[9px] font-bold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+                                type="button"
+                            >
+                                Reset Posisi
+                            </button>
+                        </div>
+
+                        <!-- Skala / Zoom Slider -->
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                                <span>Skala / Ukuran Motif</span>
+                                <span class="font-mono text-sky-600 dark:text-sky-400 font-bold">{{ store.jerseyPatternScale.toFixed(2) }}x</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0.2"
+                                max="3.0"
+                                step="0.05"
+                                v-model.number="store.jerseyPatternScale"
+                                @input="store.saveToLocalStorage()"
+                                class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                            />
+                        </div>
+
+                        <!-- Rotasi Slider -->
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                                <span>Rotasi Motif</span>
+                                <span class="font-mono text-sky-600 dark:text-sky-400 font-bold">{{ store.jerseyPatternRotation }}°</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="360"
+                                step="5"
+                                v-model.number="store.jerseyPatternRotation"
+                                @input="store.saveToLocalStorage()"
+                                class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                            />
+                        </div>
+
+                        <!-- Pergeseran Posisi X Slider -->
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                                <span>Geser Posisi Horizontal (X)</span>
+                                <span class="font-mono text-sky-600 dark:text-sky-400 font-bold">{{ store.jerseyPatternOffsetX }} px</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="-250"
+                                max="250"
+                                step="5"
+                                v-model.number="store.jerseyPatternOffsetX"
+                                @input="store.saveToLocalStorage()"
+                                class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                            />
+                        </div>
+
+                        <!-- Pergeseran Posisi Y Slider -->
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                                <span>Geser Posisi Vertikal (Y)</span>
+                                <span class="font-mono text-sky-600 dark:text-sky-400 font-bold">{{ store.jerseyPatternOffsetY }} px</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="-250"
+                                max="250"
+                                step="5"
+                                v-model.number="store.jerseyPatternOffsetY"
+                                @input="store.saveToLocalStorage()"
+                                class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                            />
+                        </div>
+
+                        <!-- Pengulangan (Repeat / Tile) & Warna Dasar -->
+                        <div class="grid grid-cols-2 gap-3 pt-2">
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 block mb-1">Mode Tiling</label>
+                                <button
+                                    @click="store.jerseyPatternRepeat = store.jerseyPatternRepeat === 'repeat' ? 'no-repeat' : 'repeat'; store.saveToLocalStorage()"
+                                    type="button"
+                                    class="w-full py-1.5 px-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-[10px] font-extrabold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-sky-500 transition-all uppercase cursor-pointer"
+                                >
+                                    {{ store.jerseyPatternRepeat === 'repeat' ? 'Pengulangan' : 'Tunggal' }}
+                                </button>
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 block mb-1">Warna Dasar Jersey</label>
+                                <div class="flex items-center gap-2">
+                                    <input
+                                        type="color"
+                                        v-model="store.jerseyBaseColor"
+                                        @change="store.saveToLocalStorage()"
+                                        class="w-8 h-8 rounded-lg border-0 cursor-pointer p-0 bg-transparent"
+                                    />
+                                    <span class="text-[10px] font-mono font-bold text-slate-600 dark:text-slate-400">
+                                        {{ store.jerseyBaseColor }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- 3. Unggah Gambar Accordion -->

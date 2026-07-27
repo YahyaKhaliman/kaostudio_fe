@@ -6,7 +6,7 @@ import {
     type ViewType,
     type CanvasViewType,
 } from "../stores/configurator";
-import { processMockupImage, colorizeMockup } from "../utils/mockupProcessor";
+import { processMockupImage, colorizeMockup, colorizeJerseyWithPattern, loadImage } from "../utils/mockupProcessor";
 import {
     PhSpinner,
     PhCursorClick,
@@ -34,6 +34,8 @@ import longTshirtFrontImg from "../assets/images/longTshirtFront.png";
 import longTshirtBackImg from "../assets/images/longTshirtBack.png";
 import poloFrontImg from "../assets/images/poloFront.png";
 import poloBackImg from "../assets/images/poloBack.png";
+import jerseyFrontImg from "../assets/images/jerseyFront.png";
+import jerseyBackImg from "../assets/images/jerseyBack.png";
 
 const shirtImages = {
     tshirt: {
@@ -47,6 +49,10 @@ const shirtImages = {
     polo: {
         front: poloFrontImg,
         back: poloBackImg,
+    },
+    jersey: {
+        front: jerseyFrontImg,
+        back: jerseyBackImg,
     },
 };
 
@@ -260,6 +266,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
 // Menyimpan referensi mockup hasil pre-proses secara reaktif
 const processedFront = ref<HTMLCanvasElement | null>(null);
 const processedBack = ref<HTMLCanvasElement | null>(null);
+const loadedPatternImage = ref<HTMLImageElement | null>(null);
 
 // Konfigurasi letak dan ukuran area sablon (torso area) pada canvas mockup 500x500px untuk setiap jenis kaos
 const shirtTypeConfigs = {
@@ -274,6 +281,10 @@ const shirtTypeConfigs = {
     polo: {
         front: { baseTop: 110, pxPerCm: 5.4, sideMargin: 4.0, leftOffset: -9 }, // geser 9px ke kiri agar pas di tengah kaos polo yang off-center
         back: { baseTop: 90, pxPerCm: 5.4, sideMargin: 4.0, leftOffset: -9 },
+    },
+    jersey: {
+        front: { baseTop: 95, pxPerCm: 5.5, sideMargin: 4.0, leftOffset: 0 },
+        back: { baseTop: 50, pxPerCm: 5.5, sideMargin: 4.0, leftOffset: 0 },
     },
 };
 
@@ -374,9 +385,20 @@ const getStandardSnapPoints = () => {
     return [];
 };
 
-// Menghitung warna mockup secara statis untuk tampak depan dan belakang
+// Menghitung warna / motif mockup secara statis untuk tampak depan dan belakang
 const frontMockupUrl = computed(() => {
     if (processedFront.value) {
+        if (store.currentShirtType === "jersey") {
+            return colorizeJerseyWithPattern(processedFront.value, {
+                patternImg: loadedPatternImage.value,
+                scale: store.jerseyPatternScale,
+                rotation: store.jerseyPatternRotation,
+                offsetX: store.jerseyPatternOffsetX,
+                offsetY: store.jerseyPatternOffsetY,
+                repeat: store.jerseyPatternRepeat,
+                baseColor: store.jerseyBaseColor || store.shirtColor,
+            });
+        }
         let tagBox = undefined;
         if (store.currentShirtType === "tshirt") {
             tagBox = { left: 0.6645, top: 0.88, width: 0.0255, height: 0.0255 };
@@ -397,10 +419,101 @@ const frontMockupUrl = computed(() => {
 
 const backMockupUrl = computed(() => {
     if (processedBack.value) {
+        if (store.currentShirtType === "jersey") {
+            return colorizeJerseyWithPattern(processedBack.value, {
+                patternImg: loadedPatternImage.value,
+                scale: store.jerseyPatternScale,
+                rotation: store.jerseyPatternRotation,
+                offsetX: store.jerseyPatternOffsetX,
+                offsetY: store.jerseyPatternOffsetY,
+                repeat: store.jerseyPatternRepeat,
+                baseColor: store.jerseyBaseColor || store.shirtColor,
+            });
+        }
         return colorizeMockup(processedBack.value, store.shirtColor);
     }
     return shirtImages[store.currentShirtType].back;
 });
+
+// Watcher untuk memperbarui gambar motif saat ada perubahan di store
+watch(
+    [
+        () => store.jerseyPatternUrl,
+        () => store.jerseyPatternScale,
+        () => store.jerseyPatternRotation,
+        () => store.jerseyPatternOffsetX,
+        () => store.jerseyPatternOffsetY,
+        () => store.jerseyPatternRepeat,
+        () => store.jerseyBaseColor,
+        () => store.currentShirtType,
+    ],
+    async () => {
+        if (store.jerseyPatternUrl) {
+            try {
+                loadedPatternImage.value = await loadImage(store.jerseyPatternUrl);
+            } catch (err) {
+                console.error("Gagal memuat motif jersey:", err);
+            }
+        } else {
+            loadedPatternImage.value = null;
+        }
+        updateMockupColor();
+    },
+    { immediate: true }
+);
+
+// Memperbarui warna/motif kaos secara dinamis berdasarkan state store
+const updateMockupColor = () => {
+    if (store.currentShirtType === "jersey") {
+        const patternOpts = {
+            patternImg: loadedPatternImage.value,
+            scale: store.jerseyPatternScale,
+            rotation: store.jerseyPatternRotation,
+            offsetX: store.jerseyPatternOffsetX,
+            offsetY: store.jerseyPatternOffsetY,
+            repeat: store.jerseyPatternRepeat,
+            baseColor: store.jerseyBaseColor || store.shirtColor,
+        };
+        if (displayedView.value === "front" && processedFront.value) {
+            currentMockupUrl.value = colorizeJerseyWithPattern(
+                processedFront.value,
+                patternOpts,
+            );
+        } else if (displayedView.value === "back" && processedBack.value) {
+            currentMockupUrl.value = colorizeJerseyWithPattern(
+                processedBack.value,
+                patternOpts,
+            );
+        }
+        return;
+    }
+
+    if (displayedView.value === "front" && processedFront.value) {
+        let tagBox = undefined;
+        if (store.currentShirtType === "tshirt") {
+            tagBox = { left: 0.6645, top: 0.88, width: 0.0255, height: 0.0255 };
+        } else if (store.currentShirtType === "longTshirt") {
+            tagBox = { left: 0.696, top: 0.907, width: 0.0255, height: 0.025 };
+        } else if (store.currentShirtType === "polo") {
+            tagBox = {
+                left: 0.6825,
+                top: 0.9253,
+                width: 0.0261,
+                height: 0.0251,
+            };
+        }
+        currentMockupUrl.value = colorizeMockup(
+            processedFront.value,
+            store.shirtColor,
+            tagBox,
+        );
+    } else if (displayedView.value === "back" && processedBack.value) {
+        currentMockupUrl.value = colorizeMockup(
+            processedBack.value,
+            store.shirtColor,
+        );
+    }
+};
 
 // Fungsi helper untuk menghitung area cetak dengan ukuran fleksibel (untuk mode preview 320px)
 const getPrintableAreaStyle = (view: "front" | "back", size: number) => {
@@ -455,35 +568,6 @@ const initMockupImages = async () => {
         console.error("Gagal memproses gambar mockup:", error);
     } finally {
         isProcessing.value = false;
-    }
-};
-
-// Memperbarui warna kaos secara dinamis berdasarkan state store
-const updateMockupColor = () => {
-    if (displayedView.value === "front" && processedFront.value) {
-        let tagBox = undefined;
-        if (store.currentShirtType === "tshirt") {
-            tagBox = { left: 0.6645, top: 0.88, width: 0.0255, height: 0.0255 };
-        } else if (store.currentShirtType === "longTshirt") {
-            tagBox = { left: 0.696, top: 0.907, width: 0.0255, height: 0.025 };
-        } else if (store.currentShirtType === "polo") {
-            tagBox = {
-                left: 0.6825,
-                top: 0.9253,
-                width: 0.0261,
-                height: 0.0251,
-            };
-        }
-        currentMockupUrl.value = colorizeMockup(
-            processedFront.value,
-            store.shirtColor,
-            tagBox,
-        );
-    } else if (displayedView.value === "back" && processedBack.value) {
-        currentMockupUrl.value = colorizeMockup(
-            processedBack.value,
-            store.shirtColor,
-        );
     }
 };
 

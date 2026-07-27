@@ -107,6 +107,8 @@ const activeShirtLabel = computed(() => {
         return `Kaos Polos Cotton Combed 30s Lengan Panjang (${colorName})`;
     } else if (store.currentShirtType === "polo") {
         return `Kaos Polo CVC Lacoste (${colorName})`;
+    } else if (store.currentShirtType === "jersey") {
+        return `Jersey Custom Motif Sublimasi`;
     }
     return "Pakaian Polos";
 });
@@ -1882,7 +1884,28 @@ watch(showPenawaranModal, (isOpen) => {
                                     Menghitung estimasi harga...
                                 </span>
                             </div>
+                            <!-- Keterangan Khusus Jersey -->
+                            <div
+                                v-if="store.currentShirtType === 'jersey'"
+                                class="p-6 bg-gradient-to-br from-sky-50/80 to-indigo-50/50 dark:from-slate-900/80 dark:to-slate-950/80 border border-sky-200/80 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center text-center gap-3 my-auto shadow-xs"
+                            >
+                                <div class="p-3 bg-sky-500/15 text-sky-600 dark:text-sky-400 rounded-2xl">
+                                    <PhInfo :size="28" weight="bold" />
+                                </div>
+                                <div class="space-y-1.5 max-w-lg">
+                                    <span class="text-[10px] font-black uppercase tracking-widest text-sky-600 dark:text-sky-400 block">
+                                        Jersey Custom Sublimasi
+                                    </span>
+                                    <h4 class="text-sm font-extrabold text-slate-800 dark:text-white">
+                                        Perhitungan estimasi harga silahkan hubungi admin
+                                    </h4>
+                                    <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+                                        Untuk pemesanan jersey kustom motif sublimasi, perhitungan estimasi harga dilakukan secara khusus menyesuaikan spesifikasi bahan, teknik cetak, dan kuantitas pesanan.
+                                    </p>
+                                </div>
+                            </div>
                             <table
+                                v-else
                                 class="w-full text-xs text-left border-collapse"
                             >
                                 <thead>
@@ -2002,19 +2025,16 @@ watch(showPenawaranModal, (isOpen) => {
                             </span>
                         </div>
                         <div class="flex items-center gap-2.5">
-                            <!-- Tombol Buat Penawaran (Unreleased / Soon) -->
+                            <!-- Tombol Buat Penawaran (Hanya Tampil Jika User isLogin) -->
                             <button
-                                disabled
-                                class="px-3.5 py-2 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 text-slate-600 dark:text-slate-350 text-xs font-bold cursor-not-allowed flex items-center gap-2 select-none opacity-85 shadow-xs"
+                                v-if="authStore.isLoggedIn"
+                                @click="handleOpenPenawaranModal"
+                                class="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold flex items-center gap-2 select-none shadow-sm transition-all cursor-pointer active:scale-95"
                                 type="button"
-                                title="Fitur Buat Penawaran sedang dalam tahap integrasi & rilis (Segera Hadir)"
+                                title="Buat Penawaran Harga Resmi"
                             >
-                                <PhFileText :size="16" class="text-sky-500 shrink-0" />
+                                <PhFileText :size="16" weight="bold" class="shrink-0" />
                                 <span>Buat Penawaran</span>
-                                <span
-                                    class="px-1.5 py-0.5 text-[9px] font-black bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-md uppercase tracking-wider border border-sky-500/20"
-                                    >Segera</span
-                                >
                             </button>
 
                             <!-- Tombol Kirim WA Admin (Unreleased / Soon) -->
