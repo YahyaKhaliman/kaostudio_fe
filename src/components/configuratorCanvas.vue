@@ -6,7 +6,12 @@ import {
     type ViewType,
     type CanvasViewType,
 } from "../stores/configurator";
-import { processMockupImage, colorizeMockup, colorizeJerseyWithPattern, loadImage } from "../utils/mockupProcessor";
+import {
+    processMockupImage,
+    colorizeMockup,
+    colorizeJerseyWithPattern,
+    loadImage,
+} from "../utils/mockupProcessor";
 import {
     PhSpinner,
     PhCursorClick,
@@ -19,6 +24,7 @@ import {
     PhTShirt,
     PhArrowsClockwise,
     PhEye,
+    PhEyeSlash,
 } from "@phosphor-icons/vue";
 
 // Kustomisasi visual garis bantu (bounding box) & tombol kontrol Fabric.js agar bertema premium
@@ -58,6 +64,14 @@ const shirtImages = {
         back: jerseyBackImg,
     },
 };
+
+const props = defineProps<{
+    isPanelHidden?: boolean;
+}>();
+
+const emit = defineEmits<{
+    (e: "toggle-panel"): void;
+}>();
 
 const store = useConfiguratorStore();
 
@@ -116,8 +130,23 @@ const resetZoom = () => {
     zoomScale.value = 1.0;
 };
 
-// Sinkronisasi ulang koordinat offset mouse Fabric.js saat skala zoom berubah
-watch(zoomScale, () => {
+// Skala dasar area canvas (Perbesar visual canvas dari 500px -> 550px (normal) & 575px (Focus Mode))
+const baseCanvasScale = computed(() => {
+    return props.isPanelHidden ? 1.15 : 1.10;
+});
+
+const effectiveScale = computed(() => {
+    return parseFloat((baseCanvasScale.value * zoomScale.value).toFixed(3));
+});
+
+// Ukuran piksel acuan card mode preview 2 sisi (Tampak Depan & Tampak Belakang)
+// Dikembalikan ke 320px pada mode Buka Panel, dan diperbesar menjadi 500px khusus pada Focus Mode
+const bothCardSize = computed(() => {
+    return props.isPanelHidden ? 500 : 320;
+});
+
+// Sinkronisasi ulang koordinat offset mouse Fabric.js saat skala zoom atau mode panel berubah
+watch([zoomScale, baseCanvasScale], () => {
     nextTick(() => {
         fabricCanvas?.calcOffset();
     });
@@ -174,12 +203,15 @@ const toggleDetailFocus = () => {
     }
 };
 
+// Faktor keamanan jarak (padding) dari batas canvas agar kaos ukuran terbesar (XXL/XXXL) berjarak aman dari tepi canvas
+const baseShirtPaddingFactor = 0.88;
+
 // Hitung skala visual kaos di layar berdasarkan ukuran terpilih (S, M, L, XL, XXL, XXXL)
-// Kita gunakan ukuran L (Lebar dada 51 cm) sebagai ukuran referensi visual 100%
+// Menggunakan ukuran XXL (Lebar dada 55 cm) sebagai acuan batas maksimum visual kaos agar berjarak aman dari tepi canvas
 const shirtScale = computed(() => {
-    const refWidth = 51;
+    const refWidth = 55; // Ukuran XXL (55cm) sebagai acuan batas terbesar
     const sizeData = store.shirtSizes[store.currentSize];
-    return sizeData.width / refWidth;
+    return (sizeData.width / refWidth) * baseShirtPaddingFactor;
 });
 
 // State untuk tooltip dimensi melayang (koordinat absolut di atas objek terpilih)
@@ -295,7 +327,12 @@ const activeShirtConfig = computed(() => {
     const viewKey = (
         displayedView.value === "both" ? "front" : displayedView.value
     ) as "front" | "back";
-    return shirtTypeConfigs[store.currentShirtType][viewKey];
+    const cfg = shirtTypeConfigs[store.currentShirtType][viewKey];
+    return {
+        ...cfg,
+        pxPerCm: cfg.pxPerCm * baseShirtPaddingFactor,
+        baseTop: 250 + (cfg.baseTop - 250) * baseShirtPaddingFactor,
+    };
 });
 
 const pxPerCm = computed(() => activeShirtConfig.value.pxPerCm);
@@ -470,7 +507,9 @@ watch(
     async () => {
         if (store.jerseyPatternUrl) {
             try {
-                loadedPatternImage.value = await loadImage(store.jerseyPatternUrl);
+                loadedPatternImage.value = await loadImage(
+                    store.jerseyPatternUrl,
+                );
             } catch (err) {
                 console.error("Gagal memuat motif jersey:", err);
             }
@@ -479,7 +518,7 @@ watch(
         }
         updateMockupColor();
     },
-    { immediate: true }
+    { immediate: true },
 );
 
 // Memperbarui warna/motif kaos secara dinamis berdasarkan state store
@@ -533,14 +572,15 @@ function updateMockupColor() {
             store.shirtColor,
         );
     }
-};
+}
 
 // Fungsi helper untuk menghitung area cetak dengan ukuran fleksibel (untuk mode preview 320px)
 const getPrintableAreaStyle = (view: "front" | "back", size: number) => {
     const scale = size / 500;
     const sizeData = store.shirtSizes[store.currentSize];
     const config = shirtTypeConfigs[store.currentShirtType][view];
-    const pcm = config.pxPerCm;
+    const pcm = config.pxPerCm * baseShirtPaddingFactor;
+    const baseTop = 250 + (config.baseTop - 250) * baseShirtPaddingFactor;
 
     const margin = config.sideMargin;
 
@@ -550,7 +590,7 @@ const getPrintableAreaStyle = (view: "front" | "back", size: number) => {
 
     const refLength = 71;
     const diff = (refLength - sizeData.length) * pcm;
-    const cTop = Math.round((config.baseTop + diff * 0.25) * scale);
+    const cTop = Math.round((baseTop + diff * 0.25) * scale);
     const offset = Math.round((config.leftOffset || 0) * scale);
 
     return {
@@ -817,7 +857,7 @@ const loadStateForView = async (view: "front" | "back") => {
                 if (oldW !== newW || oldH !== newH) {
                     const scaleX = newW / oldW;
                     const scaleY = newH / oldH;
-                    
+
                     const oldPxPerCm = savedData.pxPerCm || pxPerCm.value;
                     const newPxPerCm = pxPerCm.value;
                     const objScaleFactor = newPxPerCm / oldPxPerCm;
@@ -1013,7 +1053,9 @@ watch(
 watch(
     () => store.currentShirtType,
     async (newType, oldType) => {
-        const viewKey = (displayedView.value === "both" ? "front" : displayedView.value) as "front" | "back";
+        const viewKey = (
+            displayedView.value === "both" ? "front" : displayedView.value
+        ) as "front" | "back";
         const oldConfig = shirtTypeConfigs[oldType][viewKey];
         const oldPxPerCm = oldConfig ? oldConfig.pxPerCm : pxPerCm.value;
 
@@ -1037,7 +1079,7 @@ watch(
             ) {
                 const scaleX = newWidth / oldWidth;
                 const scaleY = newHeight / oldHeight;
-                
+
                 const newPxPerCm = pxPerCm.value;
                 const objScaleFactor = newPxPerCm / oldPxPerCm;
 
@@ -1258,7 +1300,7 @@ const getPrintDataUrl = async (view: "front" | "back"): Promise<string> => {
                     if (oldW !== newW || oldH !== newH) {
                         const scaleX = newW / oldW;
                         const scaleY = newH / oldH;
-                        
+
                         const oldPxPerCm = savedData.pxPerCm || pcm;
                         const newPxPerCm = pcm;
                         const objScaleFactor = newPxPerCm / oldPxPerCm;
@@ -1541,7 +1583,7 @@ const getMockupDataUrl = async (view: "front" | "back"): Promise<string> => {
 
                     // Hitung cWidth dan cHeight murni dari konfigurasi sisi (view) yang sedang diproses
                     const cWidth = Math.round(
-                        (sizeData.width - 2 * config.sideMargin) * pcm
+                        (sizeData.width - 2 * config.sideMargin) * pcm,
                     );
                     const cHeight = Math.round(sizeData.length * pcm);
 
@@ -1864,10 +1906,47 @@ defineExpose({
 
 <template>
     <div class="flex flex-col items-center justify-center p-2 w-full">
-        <!-- Header Studio: Judul "WORKSPACE STUDIO" di Tengah & Tombol Pemindah Sisi di Kanan -->
+        <!-- Header Studio: Judul "WORKSPACE STUDIO" di Tengah, Tombol Focus Mode di Kiri & Tombol Pemindah Sisi di Kanan -->
         <div class="w-full relative flex items-center justify-center mb-4 px-1">
-            <h2 class="text-xs font-bold text-slate-500 tracking-widest uppercase flex items-center justify-center gap-2 select-none">
-                <span class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span>
+            <!-- Tombol Sembunyikan / Buka Panel Kontrol (Focus Mode) -->
+            <button
+                @click="emit('toggle-panel')"
+                type="button"
+                class="absolute left-1 px-3 py-1.5 bg-white/85 dark:bg-slate-900/85 hover:bg-white dark:hover:bg-slate-900 backdrop-blur-md rounded-xl border border-sky-100 dark:border-slate-800 shadow-xs hover:shadow-md transition-all duration-200 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer active:scale-95 group z-30"
+                :title="
+                    isPanelHidden
+                        ? 'Tampilkan Panel Kontrol'
+                        : 'Sembunyikan Panel Kontrol (Mode Fokus)'
+                "
+            >
+                <div
+                    class="p-1 rounded-lg bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400"
+                >
+                    <PhEyeSlash
+                        v-if="!isPanelHidden"
+                        :size="13"
+                        weight="bold"
+                    />
+                    <PhEye
+                        v-else
+                        :size="13"
+                        weight="bold"
+                        class="text-amber-500 animate-pulse"
+                    />
+                </div>
+                <span
+                    class="text-[10.5px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200 hidden sm:inline"
+                >
+                    {{ isPanelHidden ? "Buka Panel" : "Focus Mode" }}
+                </span>
+            </button>
+
+            <h2
+                class="text-xs font-bold text-slate-500 tracking-widest uppercase flex items-center justify-center gap-2 select-none"
+            >
+                <span
+                    class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"
+                ></span>
                 Workspace Studio
             </h2>
 
@@ -1877,13 +1956,25 @@ defineExpose({
                 class="absolute right-1 px-3 py-1.5 bg-white/85 dark:bg-slate-900/85 hover:bg-white dark:hover:bg-slate-900 backdrop-blur-md rounded-xl border border-sky-100 dark:border-slate-800 shadow-xs hover:shadow-md transition-all duration-200 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer active:scale-95 group z-30"
                 :title="`Beralih tampilan (Saat ini: ${store.currentView === 'front' ? 'Tampak Depan' : store.currentView === 'back' ? 'Tampak Belakang' : 'Preview 2 Sisi'})`"
             >
-                <div class="p-1 rounded-lg bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 group-hover:rotate-180 transition-transform duration-300">
+                <div
+                    class="p-1 rounded-lg bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 group-hover:rotate-180 transition-transform duration-300"
+                >
                     <PhArrowsClockwise :size="13" weight="bold" />
                 </div>
-                <span class="text-[10.5px] font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1">
+                <span
+                    class="text-[10.5px] font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1"
+                >
                     <span class="text-slate-400 font-medium">Sisi:</span>
-                    <span class="text-sky-600 dark:text-sky-400 uppercase tracking-wider">
-                        {{ store.currentView === 'front' ? 'Depan' : store.currentView === 'back' ? 'Belakang' : '2 Sisi' }}
+                    <span
+                        class="text-sky-600 dark:text-sky-400 uppercase tracking-wider"
+                    >
+                        {{
+                            store.currentView === "front"
+                                ? "Depan"
+                                : store.currentView === "back"
+                                  ? "Belakang"
+                                  : "2 Sisi"
+                        }}
                     </span>
                 </span>
             </button>
@@ -1892,11 +1983,17 @@ defineExpose({
         <!-- Container Mockup Kaos (Mode Edit - Hanya tampil jika bukan mode 'both') -->
         <div
             v-show="store.currentView !== 'both'"
-            class="relative w-[500px] h-[500px] rounded-3xl flex items-center justify-center overflow-hidden border border-sky-100 dark:border-slate-800 transition-all duration-300 shadow-lg bg-white dark:bg-slate-900/60 perspective-1000"
-            :class="{
-                'bg-checkerboard-light': store.backdropType === 'checkerboard',
-                'bg-studio-wall': store.backdropType === 'gradient',
-            }"
+            class="relative rounded-3xl flex items-center justify-center overflow-hidden border border-sky-100 dark:border-slate-800 transition-all duration-500 shadow-xl bg-white dark:bg-slate-900/60 perspective-1000 shrink-0"
+            :class="[
+                isPanelHidden
+                    ? 'w-[330px] h-[330px] xs:w-[430px] xs:h-[430px] sm:w-[520px] sm:h-[520px] md:w-[575px] md:h-[575px]'
+                    : 'w-[320px] h-[320px] xs:w-[420px] xs:h-[420px] sm:w-[500px] sm:h-[500px] md:w-[550px] md:h-[550px]',
+                {
+                    'bg-checkerboard-light':
+                        store.backdropType === 'checkerboard',
+                    'bg-studio-wall': store.backdropType === 'gradient',
+                },
+            ]"
             :style="containerBackdropStyle"
             @mousemove="handleContainerMouseMove"
             @mouseleave="handleContainerMouseLeave"
@@ -1925,11 +2022,11 @@ defineExpose({
                 <div
                     class="absolute inset-0 w-full h-full flex items-center justify-center transform-style-3d pointer-events-none transition-all duration-300 ease-out"
                     :style="{
-                        transform: `scale(${zoomScale})`,
+                        transform: `scale(${effectiveScale})`,
                         transformOrigin: transformOriginStyle,
                         transition: isDetailZoomActive
                             ? 'transform 0.3s ease-out, transform-origin 0.15s ease-out'
-                            : '',
+                            : 'transform 0.3s ease-out',
                     }"
                 >
                     <!-- Lapisan Kaos Mockup (Dengan filter drop-shadow agar kaos terlihat timbul 3D) -->
@@ -2060,16 +2157,21 @@ defineExpose({
         <!-- Mode Preview Berdampingan (Kedua Sisi) (Hanya tampil jika mode 'both') -->
         <div
             v-if="store.currentView === 'both'"
-            class="w-full flex flex-col md:flex-row gap-8 justify-center items-center py-4 perspective-1000"
+            class="w-full flex flex-col md:flex-row gap-6 justify-center items-center py-4 transition-all duration-500 perspective-1000"
         >
             <!-- Kaos Depan (3D Entry Card) -->
             <div
-                class="relative w-[320px] h-[320px] rounded-3xl flex items-center justify-center overflow-hidden border border-sky-100 dark:border-slate-800 shadow-xl bg-white dark:bg-slate-900/60 animate-preview-left transform-style-3d group/preview"
-                :class="{
-                    'bg-checkerboard-light':
-                        store.backdropType === 'checkerboard',
-                    'bg-studio-wall': store.backdropType === 'gradient',
-                }"
+                class="relative rounded-3xl flex items-center justify-center overflow-hidden border border-sky-100 dark:border-slate-800 shadow-xl bg-white dark:bg-slate-900/60 animate-preview-left transform-style-3d group/preview transition-all duration-500 shrink-0"
+                :class="[
+                    isPanelHidden
+                        ? 'w-[320px] h-[320px] xs:w-[400px] xs:h-[400px] sm:w-[450px] sm:h-[450px] md:w-[500px] md:h-[500px]'
+                        : 'w-[320px] h-[320px]',
+                    {
+                        'bg-checkerboard-light':
+                            store.backdropType === 'checkerboard',
+                        'bg-studio-wall': store.backdropType === 'gradient',
+                    },
+                ]"
                 :style="containerBackdropStyle"
             >
                 <!-- Wrapper Skala Ukuran Kaos -->
@@ -2091,7 +2193,7 @@ defineExpose({
                         <!-- Area Desain Sablon -->
                         <div
                             class="absolute"
-                            :style="getPrintableAreaStyle('front', 320)"
+                            :style="getPrintableAreaStyle('front', bothCardSize)"
                         >
                             <img
                                 v-if="store.frontDesignUrl"
@@ -2113,12 +2215,17 @@ defineExpose({
 
             <!-- Kaos Belakang (3D Entry Card) -->
             <div
-                class="relative w-[320px] h-[320px] rounded-3xl flex items-center justify-center overflow-hidden border border-sky-100 dark:border-slate-800 shadow-xl bg-white dark:bg-slate-900/60 animate-preview-right transform-style-3d group/preview"
-                :class="{
-                    'bg-checkerboard-light':
-                        store.backdropType === 'checkerboard',
-                    'bg-studio-wall': store.backdropType === 'gradient',
-                }"
+                class="relative rounded-3xl flex items-center justify-center overflow-hidden border border-sky-100 dark:border-slate-800 shadow-xl bg-white dark:bg-slate-900/60 animate-preview-right transform-style-3d group/preview transition-all duration-500 shrink-0"
+                :class="[
+                    isPanelHidden
+                        ? 'w-[320px] h-[320px] xs:w-[400px] xs:h-[400px] sm:w-[450px] sm:h-[450px] md:w-[500px] md:h-[500px]'
+                        : 'w-[320px] h-[320px]',
+                    {
+                        'bg-checkerboard-light':
+                            store.backdropType === 'checkerboard',
+                        'bg-studio-wall': store.backdropType === 'gradient',
+                    },
+                ]"
                 :style="containerBackdropStyle"
             >
                 <!-- Wrapper Skala Ukuran Kaos -->
@@ -2140,7 +2247,7 @@ defineExpose({
                         <!-- Area Desain Sablon -->
                         <div
                             class="absolute"
-                            :style="getPrintableAreaStyle('back', 320)"
+                            :style="getPrintableAreaStyle('back', bothCardSize)"
                         >
                             <img
                                 v-if="store.backDesignUrl"
@@ -2165,7 +2272,8 @@ defineExpose({
         <Transition name="fade">
             <div
                 v-if="store.currentView !== 'both' && selectedObjectDimensions"
-                class="mt-5 w-[500px] p-3.5 bg-gradient-to-r from-sky-500/10 to-indigo-500/10 dark:from-slate-800/30 dark:to-slate-850/30 border border-sky-200/50 dark:border-slate-800/80 rounded-2xl flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-200"
+                class="mt-5 w-full p-3.5 bg-gradient-to-r from-sky-500/10 to-indigo-500/10 dark:from-slate-800/30 dark:to-slate-850/30 border border-sky-200/50 dark:border-slate-800/80 rounded-2xl flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 transition-all duration-300"
+                :class="isPanelHidden ? 'max-w-[620px]' : 'max-w-[550px]'"
             >
                 <div class="flex items-center gap-2">
                     <div

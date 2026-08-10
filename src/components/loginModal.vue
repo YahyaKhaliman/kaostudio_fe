@@ -56,7 +56,7 @@ const handleLogin = async () => {
 <template>
     <div
         v-if="isOpen"
-        class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-955/75 backdrop-blur-md p-4 overflow-y-auto"
+        class="fixed inset-0 z-[110] flex items-center justify-center bg-slate-955/75 backdrop-blur-md p-4 overflow-y-auto"
         @click.self="emit('close')"
     >
         <div

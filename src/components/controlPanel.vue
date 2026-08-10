@@ -17,6 +17,7 @@ import {
     PhFloppyDisk,
     PhPlus,
     PhEye,
+    PhEyeSlash,
     PhCaretDown,
     PhRuler,
     PhX,
@@ -31,9 +32,11 @@ import ImageCropperModal from "./imageCropperModal.vue";
 const props = defineProps<{
     selectedObject: any;
     selectedObjectRotation?: number;
+    isPanelHidden?: boolean;
 }>();
 
 const emit = defineEmits<{
+    (e: "toggle-panel"): void;
     (e: "add-text", text: string, color: string, font: string): void;
     (e: "add-image", file: File | string): void;
     (e: "delete-selected"): void;
@@ -706,6 +709,23 @@ watch(
         <div
             class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-sky-400/50 to-transparent"
         ></div>
+
+        <!-- Header Panel Kontrol: Tombol Sembunyikan Panel -->
+        <div class="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
+            <h3 class="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
+                Panel Editor & Opsi
+            </h3>
+            <button
+                @click="emit('toggle-panel')"
+                type="button"
+                class="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                title="Sembunyikan Panel Kontrol (Focus Mode)"
+            >
+                <PhEyeSlash :size="14" weight="bold" />
+                <span>Sembunyikan</span>
+            </button>
+        </div>
 
         <!-- BAGIAN Pengaturan Objek Layer / Hapus (Hanya muncul jika ada objek dipilih) -->
         <Transition

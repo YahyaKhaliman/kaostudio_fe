@@ -16,6 +16,9 @@ import {
     PhCheckCircle,
     PhShieldCheck,
     PhSparkle,
+    PhEye,
+    PhEyeSlash,
+    PhSidebarSimple,
 } from "@phosphor-icons/vue";
 import { useConfiguratorStore } from "./stores/configurator";
 import { useAuthStore } from "./stores/authStore";
@@ -69,6 +72,28 @@ const showPricingEstimation = ref(false);
 const showLoginModal = ref(false);
 const showUserDropdown = ref(false);
 const showLogoutConfirmModal = ref(false);
+
+// State & handler fitur sembunyikan/tampilkan panel kontrol (Focus Mode preview)
+const isPanelHidden = ref(false);
+
+const togglePanel = () => {
+    isPanelHidden.value = !isPanelHidden.value;
+    nextTick(() => {
+        const cRef = canvasRef.value as any;
+        if (cRef?.fabricCanvas?.calcOffset) {
+            cRef.fabricCanvas.calcOffset();
+        }
+    });
+};
+
+const mainCanvasContainerClass = computed(() => {
+    if (isPanelHidden.value) {
+        return store.currentView === "both"
+            ? "lg:col-span-12 max-w-6xl mx-auto w-full min-h-[660px]"
+            : "lg:col-span-12 max-w-3xl mx-auto w-full min-h-[640px]";
+    }
+    return "lg:col-span-7 min-h-[610px]";
+});
 
 // State Toast Notification
 const toastMessage = ref<string | null>(null);
@@ -369,22 +394,40 @@ const handleUpdateRotation = (angle: number) => {
                 class="bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl text-slate-700 dark:text-slate-200 text-xs py-2.5 px-4 mb-2.5 sm:mb-3 flex items-center justify-between shadow-md relative z-50 transition-all duration-300 group overflow-hidden border-b border-sky-200/50 dark:border-slate-800/80"
             >
                 <!-- Animated Gradient Shimmer Line at Bottom Border -->
-                <div class="absolute bottom-0 inset-x-0 h-[2px] animate-shimmer-border"></div>
+                <div
+                    class="absolute bottom-0 inset-x-0 h-[2px] animate-shimmer-border"
+                ></div>
 
-                <div class="flex items-center gap-2.5 mx-auto text-center font-medium max-w-4xl relative z-10">
+                <div
+                    class="flex items-center gap-2.5 mx-auto text-center font-medium max-w-4xl relative z-10"
+                >
                     <!-- Badge Versi dengan Animated Pulse Dot & Sparkle Spin -->
-                    <span class="px-2.5 py-0.5 rounded-full bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 border border-sky-500/25 text-[9.5px] font-black uppercase tracking-wider shrink-0 flex items-center gap-1.5 shadow-xs group-hover:scale-105 transition-transform duration-300">
+                    <span
+                        class="px-2.5 py-0.5 rounded-full bg-sky-500/10 dark:bg-sky-400/10 text-sky-600 dark:text-sky-400 border border-sky-500/25 text-[9.5px] font-black uppercase tracking-wider shrink-0 flex items-center gap-1.5 shadow-xs group-hover:scale-105 transition-transform duration-300"
+                    >
                         <span class="relative flex h-2 w-2">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                            <span
+                                class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"
+                            ></span>
+                            <span
+                                class="relative inline-flex rounded-full h-2 w-2 bg-sky-500"
+                            ></span>
                         </span>
-                        <PhSparkle :size="12" weight="bold" class="text-sky-500 animate-spin-slow" />
+                        <PhSparkle
+                            :size="12"
+                            weight="bold"
+                            class="text-sky-500 animate-spin-slow"
+                        />
                         v{{ appVersion }} Update
                     </span>
 
                     <!-- Teks Update dengan Sorotan Font Gradient -->
-                    <span class="truncate text-slate-700 dark:text-slate-300 font-medium">
-                        <strong class="font-black bg-gradient-to-r from-sky-600 to-indigo-600 dark:from-sky-400 dark:to-indigo-400 bg-clip-text text-transparent mr-1">
+                    <span
+                        class="truncate text-slate-700 dark:text-slate-300 font-medium"
+                    >
+                        <strong
+                            class="font-black bg-gradient-to-r from-sky-600 to-indigo-600 dark:from-sky-400 dark:to-indigo-400 bg-clip-text text-transparent mr-1"
+                        >
                             Apa Yang Baru:
                         </strong>
                         <span>{{ latestUpdateText }}</span>
@@ -445,6 +488,38 @@ const handleUpdateRotation = (angle: number) => {
 
             <!-- Sisi Kanan: Action Buttons -->
             <div class="flex items-center space-x-2">
+                <!-- Tombol Mode Fokus / Sembunyikan Panel Kontrol -->
+                <button
+                    @click="togglePanel"
+                    class="text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white px-3 sm:px-3.5 h-10 rounded-xl border transition-all duration-200 flex items-center justify-center gap-2 shadow-sm active:scale-95 cursor-pointer font-bold text-xs"
+                    :class="
+                        isPanelHidden
+                            ? 'bg-amber-500/15 border-amber-400/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25'
+                            : 'bg-slate-50/85 dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700 hover:border-sky-300 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-750'
+                    "
+                    :title="
+                        isPanelHidden
+                            ? 'Tampilkan Panel Kontrol'
+                            : 'Sembunyikan Panel Kontrol (Mode Fokus Preview)'
+                    "
+                >
+                    <PhEyeSlash
+                        v-if="!isPanelHidden"
+                        :size="17"
+                        weight="bold"
+                        class="text-sky-600 dark:text-sky-400"
+                    />
+                    <PhEye
+                        v-else
+                        :size="17"
+                        weight="bold"
+                        class="text-amber-500 animate-pulse"
+                    />
+                    <span class="hidden md:inline">{{
+                        isPanelHidden ? "Buka Panel" : "Focus Mode"
+                    }}</span>
+                </button>
+
                 <!-- Tombol Estimasi Harga (Warna & Theme Matching) -->
                 <button
                     @click="showPricingEstimation = true"
@@ -597,46 +672,78 @@ const handleUpdateRotation = (angle: number) => {
 
         <!-- Main Workspace Area -->
         <main
-            class="flex-grow max-w-7xl mx-auto w-full p-4 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative z-10"
+            class="flex-grow max-w-7xl mx-auto w-full p-4 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative z-10 transition-all duration-500 ease-in-out"
         >
-            <!-- Sisi Kiri: Canvas Preview (Col 1-7) -->
+            <!-- Sisi Kiri: Canvas Preview (Col 1-7 jika normal, Col 1-12 centered jika focus mode) -->
             <div
-                class="lg:col-span-7 flex flex-col items-center justify-center bg-white/95 border border-sky-100/50 rounded-3xl p-6 shadow-xl backdrop-blur-md min-h-[550px] relative overflow-hidden group"
+                :class="[
+                    mainCanvasContainerClass,
+                    'flex flex-col items-center justify-center bg-white/95 dark:bg-slate-900/90 border border-sky-100/50 dark:border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-xl backdrop-blur-md relative overflow-hidden group transition-all duration-500 ease-in-out',
+                ]"
             >
                 <!-- Top border glow highlight -->
                 <div
                     class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-sky-400/40 to-transparent"
                 ></div>
-                <ConfiguratorCanvas ref="canvasRef" />
+                <ConfiguratorCanvas
+                    ref="canvasRef"
+                    :is-panel-hidden="isPanelHidden"
+                    @toggle-panel="togglePanel"
+                />
             </div>
 
             <!-- Sisi Kanan: Panel Kontrol (Col 8-12) -->
-            <div
-                class="lg:col-span-5 relative w-full max-w-xl lg:max-w-none mx-auto"
-            >
-                <ControlPanel
-                    :selected-object="canvasRef?.selectedObject"
-                    :selected-object-rotation="
-                        canvasRef?.selectedObjectRotation
-                    "
-                    @add-text="handleAddText"
-                    @add-image="handleAddImage"
-                    @delete-selected="handleDeleteSelected"
-                    @bring-to-front="handleBringToFront"
-                    @send-to-back="handleSendToBack"
-                    @export-mockup="handleExportMockup"
-                    @export-print="handleExportPrint"
-                    @update-text="handleUpdateText"
-                    @update-color="handleUpdateColor"
-                    @update-font="handleUpdateFont"
-                    @update-font-size="handleUpdateFontSize"
-                    @update-image-size="handleUpdateImageSize"
-                    @deselect-object="handleDeselectObject"
-                    @crop-selected-image="handleCropSelectedImage"
-                    @update-rotation="handleUpdateRotation"
-                />
-            </div>
+            <Transition name="fade-slide">
+                <div
+                    v-if="!isPanelHidden"
+                    class="lg:col-span-5 relative w-full max-w-xl lg:max-w-none mx-auto transition-all duration-300"
+                >
+                    <ControlPanel
+                        :selected-object="canvasRef?.selectedObject"
+                        :selected-object-rotation="
+                            canvasRef?.selectedObjectRotation
+                        "
+                        :is-panel-hidden="isPanelHidden"
+                        @toggle-panel="togglePanel"
+                        @add-text="handleAddText"
+                        @add-image="handleAddImage"
+                        @delete-selected="handleDeleteSelected"
+                        @bring-to-front="handleBringToFront"
+                        @send-to-back="handleSendToBack"
+                        @export-mockup="handleExportMockup"
+                        @export-print="handleExportPrint"
+                        @update-text="handleUpdateText"
+                        @update-color="handleUpdateColor"
+                        @update-font="handleUpdateFont"
+                        @update-font-size="handleUpdateFontSize"
+                        @update-image-size="handleUpdateImageSize"
+                        @deselect-object="handleDeselectObject"
+                        @crop-selected-image="handleCropSelectedImage"
+                        @update-rotation="handleUpdateRotation"
+                    />
+                </div>
+            </Transition>
         </main>
+
+        <!-- Floating Button Tampilkan Panel (Tampil melayang di sudut kanan bawah saat panel disembunyikan) -->
+        <Transition name="fade">
+            <button
+                v-if="isPanelHidden"
+                @click="togglePanel"
+                class="fixed bottom-6 right-6 z-40 bg-sky-600 hover:bg-sky-500 text-white font-extrabold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-sky-400/40 backdrop-blur-md transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer group"
+                title="Tampilkan Kembali Panel Kontrol"
+                type="button"
+            >
+                <PhEye
+                    :size="19"
+                    weight="bold"
+                    class="group-hover:scale-110 transition-transform"
+                />
+                <span class="text-xs uppercase tracking-wider font-extrabold"
+                    >Buka Panel Kontrol</span
+                >
+            </button>
+        </Transition>
 
         <!-- Modal Panduan Singkat (Premium Glassmorphism Backdrop) -->
         <Transition name="fade">
@@ -1007,19 +1114,34 @@ body {
 
 /* Animasi Banner Update Mikro-Interaktif */
 @keyframes shimmer-line {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
 }
 
 .animate-shimmer-border {
-    background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.8), rgba(99, 102, 241, 0.9), rgba(14, 165, 233, 0.8), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(14, 165, 233, 0.8),
+        rgba(99, 102, 241, 0.9),
+        rgba(14, 165, 233, 0.8),
+        transparent
+    );
     background-size: 200% 100%;
     animation: shimmer-line 3s infinite linear;
 }
 
 @keyframes spin-slow {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .animate-spin-slow {
@@ -1034,5 +1156,16 @@ body {
 .banner-slide-leave-to {
     opacity: 0;
     transform: translateY(-100%);
+}
+
+/* Transisi Halus Panel Kontrol (Hide/Show) */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+    opacity: 0;
+    transform: translateX(30px);
 }
 </style>
