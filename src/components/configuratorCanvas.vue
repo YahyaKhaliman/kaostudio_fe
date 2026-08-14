@@ -1095,7 +1095,9 @@ onMounted(async () => {
     store.loadFromLocalStorage(); // Muat status dari local storage terlebih dahulu sebelum inisialisasi kanvas
     initFabricCanvas();
     await initMockupImages();
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
+    // Sinkronisasi offset kanvas Fabric.js saat viewport/window berubah ukuran (penting di mobile: keyboard virtual, orientasi layar)
+    window.addEventListener('resize', syncCanvasOffset);
 
     // ResizeObserver untuk memantau pergeseran/perubahan ukuran kontainer kanvas secara otomatis
     if (typeof ResizeObserver !== "undefined") {
@@ -1114,7 +1116,8 @@ onMounted(async () => {
 // Simpan state sebelum dihancurkan
 onUnmounted(() => {
     saveCurrentState();
-    window.removeEventListener("keydown", handleKeyDown);
+    window.removeEventListener('keydown', handleKeyDown);
+    window.removeEventListener('resize', syncCanvasOffset); // Bersihkan listener window resize
     if (resizeObserver) {
         resizeObserver.disconnect();
         resizeObserver = null;
