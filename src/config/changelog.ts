@@ -7,7 +7,7 @@ export interface ReleaseNote {
 
 export const changelogHistory: ReleaseNote[] = [
   {
-    version: "1.2.3",
+    version: "1.2.4",
     date: "14 Agustus 2026",
     title: "Fitur Mockup Jersey (Custom Motif) & Perbaikan Estimasi Harga",
     badge: "Versi Terbaru",

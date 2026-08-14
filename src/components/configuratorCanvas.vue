@@ -875,9 +875,11 @@ const resizeCanvas = (view: "front" | "back") => {
     if (!fabricCanvas) return;
 
     // Hitung dimensi baru berdasarkan view dan size terpilih
+    // PENTING: Gunakan pxPerCm yang sudah dikalikan baseShirtPaddingFactor
+    // agar konsisten dengan canvasWidth/canvasHeight yang digunakan oleh snap points
     const sizeData = store.shirtSizes[store.currentSize];
     const config = shirtTypeConfigs[store.currentShirtType][view];
-    const pcm = config.pxPerCm;
+    const pcm = config.pxPerCm * baseShirtPaddingFactor; // ← Wajib: sinkron dengan computed canvasWidth/Height
     const margin = config.sideMargin;
     const newWidth = Math.round((sizeData.width - 2 * margin) * pcm);
     const newHeight = Math.round(sizeData.length * pcm);
