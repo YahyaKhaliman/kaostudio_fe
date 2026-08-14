@@ -80,9 +80,20 @@ const togglePanel = () => {
     isPanelHidden.value = !isPanelHidden.value;
     nextTick(() => {
         const cRef = canvasRef.value as any;
-        if (cRef?.fabricCanvas?.calcOffset) {
+        if (cRef?.syncCanvasOffset) {
+            cRef.syncCanvasOffset();
+        } else if (cRef?.fabricCanvas?.calcOffset) {
             cRef.fabricCanvas.calcOffset();
         }
+        // Kalibrasi ulang koordinat mouse Fabric.js setelah animasi transisi CSS 350ms & 520ms selesai
+        setTimeout(() => {
+            if (cRef?.syncCanvasOffset) cRef.syncCanvasOffset();
+            else if (cRef?.fabricCanvas?.calcOffset) cRef.fabricCanvas.calcOffset();
+        }, 350);
+        setTimeout(() => {
+            if (cRef?.syncCanvasOffset) cRef.syncCanvasOffset();
+            else if (cRef?.fabricCanvas?.calcOffset) cRef.fabricCanvas.calcOffset();
+        }, 520);
     });
 };
 

@@ -76,7 +76,10 @@ const emit = defineEmits<{
 const store = useConfiguratorStore();
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
+const mockupContainerRef = ref<HTMLDivElement | null>(null);
 let fabricCanvas: Canvas | null = null;
+let resizeObserver: ResizeObserver | null = null;
+let animationFrameId: number | null = null;
 
 const isProcessing = ref(true);
 const currentMockupUrl = ref("");
@@ -130,9 +133,9 @@ const resetZoom = () => {
     zoomScale.value = 1.0;
 };
 
-// Skala dasar area canvas (Perbesar visual canvas dari 500px -> 550px (normal) & 575px (Focus Mode))
+// Skala dasar area canvas (Skala visual konsisten 1.10 untuk mencegah pergeseran tata letak)
 const baseCanvasScale = computed(() => {
-    return props.isPanelHidden ? 1.15 : 1.10;
+    return 1.10;
 });
 
 const effectiveScale = computed(() => {
@@ -140,15 +143,20 @@ const effectiveScale = computed(() => {
 });
 
 // Ukuran piksel acuan card mode preview 2 sisi (Tampak Depan & Tampak Belakang)
-// Dikembalikan ke 320px pada mode Buka Panel, dan diperbesar menjadi 500px khusus pada Focus Mode
 const bothCardSize = computed(() => {
     return props.isPanelHidden ? 500 : 320;
 });
 
+const syncCanvasOffset = () => {
+    if (fabricCanvas) {
+        fabricCanvas.calcOffset();
+    }
+};
+
 // Sinkronisasi ulang koordinat offset mouse Fabric.js saat skala zoom atau mode panel berubah
-watch([zoomScale, baseCanvasScale], () => {
+watch([zoomScale, baseCanvasScale, () => props.isPanelHidden], () => {
     nextTick(() => {
-        fabricCanvas?.calcOffset();
+        syncCanvasOffset();
     });
 });
 
@@ -1108,12 +1116,33 @@ onMounted(async () => {
     initFabricCanvas();
     await initMockupImages();
     window.addEventListener("keydown", handleKeyDown);
+
+    // ResizeObserver untuk memantau pergeseran/perubahan ukuran kontainer kanvas secara otomatis
+    if (typeof ResizeObserver !== "undefined") {
+        resizeObserver = new ResizeObserver(() => {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(() => {
+                syncCanvasOffset();
+            });
+        });
+        if (mockupContainerRef.value) {
+            resizeObserver.observe(mockupContainerRef.value);
+        }
+    }
 });
 
 // Simpan state sebelum dihancurkan
 onUnmounted(() => {
     saveCurrentState();
     window.removeEventListener("keydown", handleKeyDown);
+    if (resizeObserver) {
+        resizeObserver.disconnect();
+        resizeObserver = null;
+    }
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
     if (fabricCanvas) {
         fabricCanvas.dispose();
         fabricCanvas = null;
@@ -1901,6 +1930,7 @@ defineExpose({
     cropSelectedImage,
     updateSelectedRotation,
     cycleView,
+    syncCanvasOffset,
 });
 </script>
 
@@ -1982,21 +2012,18 @@ defineExpose({
 
         <!-- Container Mockup Kaos (Mode Edit - Hanya tampil jika bukan mode 'both') -->
         <div
+            ref="mockupContainerRef"
             v-show="store.currentView !== 'both'"
-            class="relative rounded-3xl flex items-center justify-center overflow-hidden border border-sky-100 dark:border-slate-800 transition-all duration-500 shadow-xl bg-white dark:bg-slate-900/60 perspective-1000 shrink-0"
-            :class="[
-                isPanelHidden
-                    ? 'w-[330px] h-[330px] xs:w-[430px] xs:h-[430px] sm:w-[520px] sm:h-[520px] md:w-[575px] md:h-[575px]'
-                    : 'w-[320px] h-[320px] xs:w-[420px] xs:h-[420px] sm:w-[500px] sm:h-[500px] md:w-[550px] md:h-[550px]',
-                {
-                    'bg-checkerboard-light':
-                        store.backdropType === 'checkerboard',
-                    'bg-studio-wall': store.backdropType === 'gradient',
-                },
-            ]"
+            class="relative rounded-3xl flex items-center justify-center overflow-hidden border border-sky-100 dark:border-slate-800 transition-all duration-500 shadow-xl bg-white dark:bg-slate-900/60 perspective-1000 shrink-0 w-[320px] h-[320px] xs:w-[420px] xs:h-[420px] sm:w-[500px] sm:h-[500px] md:w-[550px] md:h-[550px]"
+            :class="{
+                'bg-checkerboard-light':
+                    store.backdropType === 'checkerboard',
+                'bg-studio-wall': store.backdropType === 'gradient',
+            }"
             :style="containerBackdropStyle"
             @mousemove="handleContainerMouseMove"
             @mouseleave="handleContainerMouseLeave"
+            @transitionend="syncCanvasOffset"
         >
             <!-- Overlay Loading Proses Background Removal -->
             <div
