@@ -160,7 +160,7 @@ watch([zoomScale, baseCanvasScale, () => props.isPanelHidden], () => {
     });
 });
 
-// Hitung origin pusat zoom dinamis (ke objek aktif atau ke pusat area cetak sablon dada kaos)
+// Hitung origin pusat zoom dinamis (ke koordinat mouse saat zoom detail aktif, atau 50% 50% secara stabil)
 const transformOriginStyle = computed(() => {
     // Jika zoom detail aktif, gunakan koordinat mouse
     if (isDetailZoomActive.value) {
@@ -171,30 +171,8 @@ const transformOriginStyle = computed(() => {
         }
     }
 
-    const containerSize = 500;
-
-    if (fabricCanvas) {
-        const activeObj = fabricCanvas.getActiveObject();
-        if (activeObj) {
-            const objCenter = activeObj.getCenterPoint();
-            const cTop = canvasTop.value;
-
-            // Posisi X absolut: canvas dipusatkan secara horizontal
-            const objX = 250 + (objCenter.x - fabricCanvas.width / 2);
-            const objY = cTop + objCenter.y;
-
-            // Ubah koordinat absolut menjadi persentase transform-origin
-            const pctX = (objX / containerSize) * 100;
-            const pctY = (objY / containerSize) * 100;
-
-            return `${pctX.toFixed(2)}% ${pctY.toFixed(2)}%`;
-        }
-    }
-
-    // Default: Pusat canvas
-    const cTop = canvasTop.value;
-    const centerY = ((cTop + canvasHeight.value / 2) / containerSize) * 100;
-    return `50% ${centerY.toFixed(2)}%`;
+    // Default: Pusat canvas/container (Selalu 50% 50% untuk mencegah pergeseran visual saat memilih objek atau toggle Focus Mode)
+    return "50% 50%";
 });
 
 // Toggle Zoom Detail Cepat (Langsung 145% zoom ke koordinat mouse yang diarahkan)
@@ -379,52 +357,52 @@ const getStandardSnapPoints = () => {
     if (type === "tshirt") {
         if (displayedView.value === "front") {
             return [
-                { name: "Tengah Dada", x: w / 2.1, y: h * 0.15 },
-                { name: "Dada Kanan", x: w * 0.21, y: h * 0.15 },
-                { name: "Dada Kiri", x: w * 0.75, y: h * 0.15 },
-                { name: "Bawah Kiri", x: w * 0.8, y: h * 0.8 },
-                { name: "Bawah Kanan", x: w * 0.21, y: h * 0.8 },
-                { name: "Tengah Kaos", x: w / 2.1, y: h / 2.2 },
+                { name: "Tengah Dada", x: w / 2, y: h * 0.15 },
+                { name: "Dada Kanan", x: w * 0.22, y: h * 0.15 },
+                { name: "Dada Kiri", x: w * 0.78, y: h * 0.15 },
+                { name: "Bawah Kanan", x: w * 0.22, y: h * 0.8 },
+                { name: "Bawah Kiri", x: w * 0.78, y: h * 0.8 },
+                { name: "Tengah Kaos", x: w / 2, y: h / 2.1 },
             ];
         } else {
             return [
-                { name: "Belakang Tengah", x: w / 2, y: h / 2.5 },
-                { name: "Belakang Tengah Atas", x: w / 2, y: h * 0.05 },
+                { name: "Belakang Tengah", x: w / 2, y: h / 2.3 },
+                { name: "Belakang Tengah Atas", x: w / 2, y: h * 0.08 },
                 { name: "Belakang Tengah Bawah", x: w / 2, y: h * 0.8 },
             ];
         }
     } else if (type === "longTshirt") {
         if (displayedView.value === "front") {
             return [
-                { name: "Tengah Dada", x: w / 2.1, y: h * 0.15 },
-                { name: "Dada Kanan", x: w * 0.2, y: h * 0.15 },
-                { name: "Dada Kiri", x: w * 0.77, y: h * 0.15 },
-                { name: "Bawah Kiri", x: w * 0.8, y: h * 0.8 },
-                { name: "Bawah Kanan", x: w * 0.21, y: h * 0.8 },
-                { name: "Tengah Kaos", x: w / 2.1, y: h / 2.2 },
+                { name: "Tengah Dada", x: w / 2, y: h * 0.15 },
+                { name: "Dada Kanan", x: w * 0.22, y: h * 0.15 },
+                { name: "Dada Kiri", x: w * 0.78, y: h * 0.15 },
+                { name: "Bawah Kanan", x: w * 0.22, y: h * 0.8 },
+                { name: "Bawah Kiri", x: w * 0.78, y: h * 0.8 },
+                { name: "Tengah Kaos", x: w / 2, y: h / 2.1 },
             ];
         } else {
             return [
-                { name: "Belakang Tengah", x: w / 2.1, y: h / 2.5 },
-                { name: "Belakang Tengah Atas", x: w / 2.1, y: h * 0.05 },
-                { name: "Belakang Tengah Bawah", x: w / 2.1, y: h * 0.8 },
+                { name: "Belakang Tengah", x: w / 2, y: h / 2.3 },
+                { name: "Belakang Tengah Atas", x: w / 2, y: h * 0.08 },
+                { name: "Belakang Tengah Bawah", x: w / 2, y: h * 0.8 },
             ];
         }
     } else if (type === "polo") {
         if (displayedView.value === "front") {
             return [
-                { name: "Tengah Dada", x: w / 1.9, y: h * 0.2 },
-                { name: "Dada Kiri", x: w * 0.83, y: h * 0.18 },
+                { name: "Tengah Dada", x: w / 2, y: h * 0.18 },
                 { name: "Dada Kanan", x: w * 0.24, y: h * 0.18 },
-                { name: "Bawah Kiri", x: w * 0.83, y: h * 0.8 },
+                { name: "Dada Kiri", x: w * 0.76, y: h * 0.18 },
                 { name: "Bawah Kanan", x: w * 0.24, y: h * 0.8 },
-                { name: "Tengah Kaos", x: w / 1.9, y: h / 2.2 },
+                { name: "Bawah Kiri", x: w * 0.76, y: h * 0.8 },
+                { name: "Tengah Kaos", x: w / 2, y: h / 2.1 },
             ];
         } else {
             return [
-                { name: "Belakang Tengah", x: w / 1.9, y: h / 2.5 },
-                { name: "Belakang Tengah Atas", x: w / 1.9, y: h * 0.05 },
-                { name: "Belakang Tengah Bawah", x: w / 1.9, y: h * 0.8 },
+                { name: "Belakang Tengah", x: w / 2, y: h / 2.3 },
+                { name: "Belakang Tengah Atas", x: w / 2, y: h * 0.08 },
+                { name: "Belakang Tengah Bawah", x: w / 2, y: h * 0.8 },
             ];
         }
     } else if (type === "jersey") {
@@ -433,13 +411,13 @@ const getStandardSnapPoints = () => {
                 { name: "Tengah Dada", x: w / 2, y: h * 0.16 },
                 { name: "Dada Kanan", x: w * 0.22, y: h * 0.16 },
                 { name: "Dada Kiri", x: w * 0.78, y: h * 0.16 },
-                { name: "Bawah Kiri", x: w * 0.8, y: h * 0.8 },
-                { name: "Bawah Kanan", x: w * 0.2, y: h * 0.8 },
-                { name: "Tengah Jersey", x: w / 2, y: h / 2.2 },
+                { name: "Bawah Kanan", x: w * 0.22, y: h * 0.8 },
+                { name: "Bawah Kiri", x: w * 0.78, y: h * 0.8 },
+                { name: "Tengah Jersey", x: w / 2, y: h / 2.1 },
             ];
         } else {
             return [
-                { name: "Belakang Tengah", x: w / 2, y: h / 2.5 },
+                { name: "Belakang Tengah", x: w / 2, y: h / 2.3 },
                 { name: "Belakang Tengah Atas", x: w / 2, y: h * 0.08 },
                 { name: "Belakang Tengah Bawah", x: w / 2, y: h * 0.8 },
             ];
