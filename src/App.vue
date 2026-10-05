@@ -103,7 +103,8 @@ const mainCanvasContainerClass = computed(() => {
             ? "lg:col-span-12 max-w-6xl mx-auto w-full min-h-[660px]"
             : "lg:col-span-12 max-w-3xl mx-auto w-full min-h-[640px]";
     }
-    return "lg:col-span-7 min-h-[610px]";
+    // Sticky di desktop: workspace tetap terlihat saat panel editor di-scroll
+    return "lg:col-span-7 min-h-[610px] lg:sticky lg:top-24 lg:self-start";
 });
 
 // State Toast Notification
@@ -388,7 +389,7 @@ const handleUpdateRotation = (angle: number) => {
 
 <template>
     <div
-        class="min-h-screen bg-gradient-to-b from-sky-200 via-sky-500 to-sky-700 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 text-slate-800 dark:text-slate-100 flex flex-col font-sans relative overflow-hidden selection:bg-sky-500/30 selection:text-sky-900 dark:selection:bg-sky-500/20 dark:selection:text-sky-300 transition-colors duration-300"
+        class="min-h-screen bg-gradient-to-b from-sky-200 via-sky-500 to-sky-700 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 text-slate-800 dark:text-slate-100 flex flex-col font-sans relative overflow-clip selection:bg-sky-500/30 selection:text-sky-900 dark:selection:bg-sky-500/20 dark:selection:text-sky-300 transition-colors duration-300"
     >
         <!-- Ambient Light Highlights (Studio brightness) -->
         <div

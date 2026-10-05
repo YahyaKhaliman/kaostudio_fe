@@ -7,9 +7,9 @@ export interface ReleaseNote {
 
 export const changelogHistory: ReleaseNote[] = [
     {
-        version: "1.3.1",
-        date: "30 September 2026",
-        title: "Fitur PWA & Peningkatan Desain",
+        version: "1.3.2",
+        date: "5 Oktober 2026",
+        title: "Peningkatan UI dan UX",
         badge: "Versi Terbaru",
     },
 ];
