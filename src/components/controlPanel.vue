@@ -503,7 +503,12 @@ const isTextSelected = computed(() => {
     );
 });
 
-// Sinkronisasi input form saat objek teks di kanvas dipilih
+// Mendeteksi apakah objek yang dipilih adalah gambar
+const isImageSelected = computed(() => {
+    return props.selectedObject && props.selectedObject.type === "image";
+});
+
+// Sinkronisasi input form saat objek teks / gambar di kanvas dipilih
 watch(
     () => props.selectedObject,
     (newObj) => {
@@ -515,6 +520,9 @@ watch(
 
             // Auto buka accordion Teks ketika objek teks dipilih di Canvas
             isTextOpen.value = true;
+        } else if (newObj && newObj.type === "image") {
+            // Auto buka accordion Unggah Gambar ketika objek gambar dipilih di Canvas
+            isUploadOpen.value = true;
         } else if (!newObj) {
             textInput.value = "";
         }
@@ -757,146 +765,6 @@ watch(
                 <span>Sembunyikan</span>
             </button>
         </div>
-
-        <!-- BAGIAN Pengaturan Objek Layer / Hapus (Hanya muncul jika ada objek dipilih) -->
-        <Transition
-            enter-active-class="transition duration-200 ease-out"
-            enter-from-class="opacity-0 -translate-y-2 scale-95"
-            enter-to-class="opacity-100 translate-y-0 scale-100"
-            leave-active-class="transition duration-150 ease-in"
-            leave-from-class="opacity-100 translate-y-0 scale-100"
-            leave-to-class="opacity-0 -translate-y-2 scale-95"
-        >
-            <div
-                v-if="selectedObject"
-                class="space-y-3 p-4 bg-slate-50/70 dark:bg-slate-950/45 border border-sky-100/60 dark:border-slate-800 rounded-2xl transition-all duration-300 relative overflow-hidden shadow-sm"
-            >
-                <h4
-                    class="text-[10px] font-black uppercase tracking-widest text-sky-800 dark:text-sky-400 pl-1 flex items-center gap-1.5"
-                >
-                    <span
-                        class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-ping"
-                    ></span>
-                    <span>Pengaturan Objek Terpilih</span>
-                </h4>
-                <div class="grid grid-cols-3 gap-2">
-                    <button
-                        @click="emit('bring-to-front')"
-                        class="py-2 px-2.5 text-[9px] font-bold uppercase tracking-wider bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 hover:border-sky-300 dark:hover:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-850 rounded-xl text-slate-750 dark:text-slate-350 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-center gap-1 hover:scale-102 active:scale-98 shadow-sm cursor-pointer"
-                        type="button"
-                    >
-                        <PhArrowUp :size="12" weight="bold" />
-                        <span>Ke Depan</span>
-                    </button>
-                    <button
-                        @click="emit('send-to-back')"
-                        class="py-2 px-2.5 text-[9px] font-bold uppercase tracking-wider bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 hover:border-sky-300 dark:hover:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-850 rounded-xl text-slate-750 dark:text-slate-355 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-center gap-1 hover:scale-102 active:scale-98 shadow-sm cursor-pointer"
-                        type="button"
-                    >
-                        <PhArrowDown :size="12" weight="bold" />
-                        <span>Ke Belakang</span>
-                    </button>
-                    <button
-                        @click="emit('delete-selected')"
-                        class="py-2 px-2.5 text-[9px] font-bold uppercase tracking-wider bg-white dark:bg-slate-900 border border-red-100 dark:border-red-950/45 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-all flex items-center justify-center gap-1 hover:scale-102 active:scale-98 shadow-sm cursor-pointer"
-                        type="button"
-                    >
-                        <PhTrash :size="12" weight="bold" />
-                        <span>Hapus</span>
-                    </button>
-                </div>
-
-                <!-- Kontrol Rotasi Akurat (Untuk Semua Tipe Objek Terpilih) -->
-                <div
-                    class="space-y-1.5 pt-3 border-t border-sky-100/50 dark:border-slate-800/80"
-                >
-                    <div
-                        class="flex justify-between items-center text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider pl-1"
-                    >
-                        <span>Rotasi Objek:</span>
-                        <span
-                            class="font-mono text-sky-600 dark:text-sky-400 font-bold"
-                            >{{ objectRotation }}°</span
-                        >
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <input
-                            type="range"
-                            v-model.number="objectRotation"
-                            @input="handleRotationChange"
-                            min="0"
-                            max="360"
-                            step="1"
-                            class="flex-grow accent-sky-600 bg-slate-200 dark:bg-slate-800 h-1.5 rounded-lg cursor-pointer transition-all"
-                        />
-                        <div class="flex items-center">
-                            <input
-                                type="number"
-                                v-model.number="objectRotation"
-                                @input="handleRotationChange"
-                                min="0"
-                                max="360"
-                                step="1"
-                                class="w-11 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center rounded-lg py-0.5 text-[9.5px] font-mono font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                            />
-                            <span
-                                class="text-[10px] font-bold text-slate-400 dark:text-slate-500 ml-0.5"
-                                >°</span
-                            >
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Pengaturan Ukuran Template Gambar (Hanya muncul jika objek terpilih berupa Gambar) -->
-                <div
-                    v-if="selectedObject.type === 'image'"
-                    class="space-y-2 pt-3 border-t border-sky-100/50 dark:border-slate-800/80"
-                >
-                    <label
-                        class="block text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider pl-1"
-                    >
-                        Ukuran Cetak Sablon (Template):
-                    </label>
-                    <div class="grid grid-cols-3 gap-1.5">
-                        <button
-                            v-for="tpl in [
-                                { name: 'A3', w: 29.7, h: 42.0 },
-                                { name: 'A4', w: 21.0, h: 29.7 },
-                                { name: 'A5', w: 14.8, h: 21.0 },
-                                { name: 'A6', w: 10.5, h: 14.8 },
-                                { name: 'Logo 8x8', w: 8.0, h: 8.0 },
-                                { name: 'Logo 10x10', w: 10.0, h: 10.0 },
-                            ]"
-                            :key="tpl.name"
-                            @click="applyImageTemplateSize(tpl.w, tpl.h)"
-                            class="py-1.5 px-1 text-[8.5px] font-extrabold uppercase rounded-lg border border-sky-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-sky-300 dark:hover:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-850 text-slate-750 dark:text-slate-350 transition-all hover:scale-102 active:scale-98 cursor-pointer text-center"
-                            type="button"
-                            :title="`Skalakan gambar proporsional ke ukuran maks ${tpl.w} x ${tpl.h} cm`"
-                        >
-                            {{ tpl.name }}
-                        </button>
-                    </div>
-                    <span
-                        class="block text-[7.5px] text-slate-400 dark:text-slate-500 italic pl-1 leading-normal"
-                    >
-                        * Skala gambar akan disesuaikan secara proporsional
-                        sesuai rasio asli (bebas distorsi).
-                    </span>
-
-                    <!-- Tombol Potong Gambar di Kanvas -->
-                    <div class="pt-2">
-                        <button
-                            @click="openCropForSelected"
-                            class="w-full py-2 px-3 rounded-xl bg-sky-600/10 hover:bg-sky-600 border border-sky-200/50 dark:border-slate-800 text-sky-700 dark:text-sky-400 hover:text-white dark:hover:text-white font-bold text-xs transition-all duration-300 flex items-center justify-center gap-1.5 hover:scale-102 active:scale-98 cursor-pointer"
-                            type="button"
-                        >
-                            <PhCrop :size="13" weight="bold" />
-                            <span>Potong Gambar (Crop)</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </Transition>
 
         <!-- Container Accordion -->
         <div class="space-y-3">
@@ -2169,6 +2037,82 @@ watch(
                             />
                         </div>
 
+                        <!-- Kontrol Rotasi Teks Terpilih -->
+                        <div
+                            v-if="isTextSelected"
+                            class="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/40"
+                        >
+                            <div
+                                class="flex justify-between items-center text-[9.5px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wide"
+                            >
+                                <span>Rotasi Teks:</span>
+                                <span
+                                    class="font-mono text-sky-600 dark:text-sky-400 font-bold"
+                                    >{{ objectRotation }}°</span
+                                >
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <input
+                                    type="range"
+                                    v-model.number="objectRotation"
+                                    @input="handleRotationChange"
+                                    min="0"
+                                    max="360"
+                                    step="1"
+                                    class="flex-grow accent-sky-600 bg-slate-200 dark:bg-slate-800 h-1.5 rounded-lg cursor-pointer transition-all"
+                                />
+                                <div class="flex items-center">
+                                    <input
+                                        type="number"
+                                        v-model.number="objectRotation"
+                                        @input="handleRotationChange"
+                                        min="0"
+                                        max="360"
+                                        step="1"
+                                        class="w-11 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center rounded-lg py-0.5 text-[9.5px] font-mono font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                                    />
+                                    <span
+                                        class="text-[10px] font-bold text-slate-400 dark:text-slate-500 ml-0.5"
+                                        >°</span
+                                    >
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Kontrol Layer & Hapus Teks Terpilih -->
+                        <div
+                            v-if="isTextSelected"
+                            class="grid grid-cols-3 gap-2 pt-1 border-t border-slate-100 dark:border-slate-800/40"
+                        >
+                            <button
+                                @click="emit('bring-to-front')"
+                                class="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 hover:border-sky-300 dark:hover:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-850 rounded-xl text-slate-750 dark:text-slate-350 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                                type="button"
+                                title="Bawa teks ke lapisan paling depan"
+                            >
+                                <PhArrowUp :size="12" weight="bold" />
+                                <span>Ke Depan</span>
+                            </button>
+                            <button
+                                @click="emit('send-to-back')"
+                                class="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 hover:border-sky-300 dark:hover:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-850 rounded-xl text-slate-750 dark:text-slate-350 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                                type="button"
+                                title="Kirim teks ke lapisan belakang"
+                            >
+                                <PhArrowDown :size="12" weight="bold" />
+                                <span>Ke Belakang</span>
+                            </button>
+                            <button
+                                @click="emit('delete-selected')"
+                                class="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider bg-white dark:bg-slate-900 border border-red-100 dark:border-red-950/45 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                                type="button"
+                                title="Hapus teks dari kanvas"
+                            >
+                                <PhTrash :size="12" weight="bold" />
+                                <span>Hapus</span>
+                            </button>
+                        </div>
+
                         <!-- Tombol Aksi -->
                         <div class="flex gap-2">
                             <button
@@ -2239,42 +2183,201 @@ watch(
                         <div>
                             <span
                                 class="text-[11px] font-black uppercase tracking-wider block"
-                                >Unggah Gambar</span
                             >
+                                {{
+                                    isImageSelected
+                                        ? "Edit Gambar Aktif"
+                                        : "Unggah Gambar"
+                                }}
+                            </span>
                             <span
                                 class="text-[9px] font-medium text-slate-400 dark:text-slate-500 block mt-0.5"
                             >
                                 {{
-                                    store.uploadedImages.length > 0
-                                        ? store.uploadedImages.length +
-                                          " gambar di cache"
-                                        : "Unggah logo atau cetakan sablon"
+                                    isImageSelected
+                                        ? "Gambar Terpilih di Kanvas"
+                                        : store.uploadedImages.length > 0
+                                          ? store.uploadedImages.length +
+                                            " gambar di cache"
+                                          : "Unggah logo atau cetakan sablon"
                                 }}
                             </span>
                         </div>
                     </div>
-                    <PhCaretDown
-                        :size="14"
-                        weight="bold"
-                        class="text-slate-400 transition-transform duration-300 mr-1"
-                        :class="{
-                            'transform rotate-180 text-sky-500': isUploadOpen,
-                        }"
-                    />
+                    <div class="flex items-center gap-2">
+                        <span
+                            v-if="isImageSelected"
+                            class="text-[8px] bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-900 px-1.5 py-0.5 rounded-md font-extrabold tracking-wide uppercase"
+                        >
+                            Terpilih
+                        </span>
+                        <PhCaretDown
+                            :size="14"
+                            weight="bold"
+                            class="text-slate-400 transition-transform duration-300 mr-1"
+                            :class="{
+                                'transform rotate-180 text-sky-500':
+                                    isUploadOpen,
+                            }"
+                        />
+                    </div>
                 </button>
 
                 <Transition
                     enter-active-class="transition-all duration-300 ease-out"
                     enter-from-class="max-h-0 opacity-0 transform -translate-y-2"
-                    enter-to-class="max-h-[800px] opacity-100 transform translate-y-0"
+                    enter-to-class="max-h-[1200px] opacity-100 transform translate-y-0"
                     leave-active-class="transition-all duration-250 ease-in"
-                    leave-from-class="max-h-[800px] opacity-100 transform translate-y-0"
+                    leave-from-class="max-h-[1200px] opacity-100 transform translate-y-0"
                     leave-to-class="max-h-0 opacity-0 transform -translate-y-2"
                 >
                     <div
                         v-show="isUploadOpen"
                         class="p-4 bg-white/30 dark:bg-slate-900/10 space-y-4"
                     >
+                        <!-- Pengaturan Gambar Terpilih di Kanvas (Hanya muncul jika objek gambar sedang dipilih) -->
+                        <div
+                            v-if="isImageSelected"
+                            class="p-3.5 bg-sky-50/70 dark:bg-slate-950/45 border border-sky-200/70 dark:border-slate-800 rounded-2xl space-y-3 shadow-xs"
+                        >
+                            <div class="flex items-center justify-between">
+                                <h4
+                                    class="text-[10px] font-black uppercase tracking-wider text-sky-800 dark:text-sky-400 flex items-center gap-1.5"
+                                >
+                                    <span
+                                        class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-ping"
+                                    ></span>
+                                    <span>Pengaturan Gambar Terpilih</span>
+                                </h4>
+                                <button
+                                    @click="emit('deselect-object')"
+                                    class="text-[9.5px] font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors cursor-pointer px-1.5 py-0.5 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-800"
+                                    type="button"
+                                    title="Selesai mengedit gambar"
+                                >
+                                    Selesai
+                                </button>
+                            </div>
+
+                            <!-- Kontrol Layer & Hapus Gambar -->
+                            <div class="grid grid-cols-3 gap-2">
+                                <button
+                                    @click="emit('bring-to-front')"
+                                    class="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 hover:border-sky-300 dark:hover:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-850 rounded-xl text-slate-750 dark:text-slate-350 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                                    type="button"
+                                    title="Bawa gambar ke lapisan paling depan"
+                                >
+                                    <PhArrowUp :size="12" weight="bold" />
+                                    <span>Ke Depan</span>
+                                </button>
+                                <button
+                                    @click="emit('send-to-back')"
+                                    class="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider bg-white dark:bg-slate-900 border border-sky-100 dark:border-slate-800 hover:border-sky-300 dark:hover:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-850 rounded-xl text-slate-750 dark:text-slate-350 hover:text-sky-600 dark:hover:text-sky-400 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                                    type="button"
+                                    title="Kirim gambar ke lapisan belakang"
+                                >
+                                    <PhArrowDown :size="12" weight="bold" />
+                                    <span>Ke Belakang</span>
+                                </button>
+                                <button
+                                    @click="emit('delete-selected')"
+                                    class="py-1.5 px-2 text-[9px] font-bold uppercase tracking-wider bg-white dark:bg-slate-900 border border-red-100 dark:border-red-950/45 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                                    type="button"
+                                    title="Hapus gambar dari kanvas"
+                                >
+                                    <PhTrash :size="12" weight="bold" />
+                                    <span>Hapus</span>
+                                </button>
+                            </div>
+
+                            <!-- Kontrol Rotasi Gambar -->
+                            <div
+                                class="space-y-1.5 pt-2 border-t border-sky-100/50 dark:border-slate-800/80"
+                            >
+                                <div
+                                    class="flex justify-between items-center text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider"
+                                >
+                                    <span>Rotasi Gambar:</span>
+                                    <span
+                                        class="font-mono text-sky-600 dark:text-sky-400 font-bold"
+                                        >{{ objectRotation }}°</span
+                                    >
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <input
+                                        type="range"
+                                        v-model.number="objectRotation"
+                                        @input="handleRotationChange"
+                                        min="0"
+                                        max="360"
+                                        step="1"
+                                        class="flex-grow accent-sky-600 bg-slate-200 dark:bg-slate-800 h-1.5 rounded-lg cursor-pointer transition-all"
+                                    />
+                                    <div class="flex items-center">
+                                        <input
+                                            type="number"
+                                            v-model.number="objectRotation"
+                                            @input="handleRotationChange"
+                                            min="0"
+                                            max="360"
+                                            step="1"
+                                            class="w-11 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center rounded-lg py-0.5 text-[9.5px] font-mono font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                                        />
+                                        <span
+                                            class="text-[10px] font-bold text-slate-400 dark:text-slate-500 ml-0.5"
+                                            >°</span
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Ukuran Template Cetak Sablon -->
+                            <div
+                                class="space-y-2 pt-2 border-t border-sky-100/50 dark:border-slate-800/80"
+                            >
+                                <label
+                                    class="block text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider"
+                                >
+                                    Ukuran Cetak Sablon (Template):
+                                </label>
+                                <div class="grid grid-cols-3 gap-1.5">
+                                    <button
+                                        v-for="tpl in [
+                                            { name: 'A3', w: 29.7, h: 42.0 },
+                                            { name: 'A4', w: 21.0, h: 29.7 },
+                                            { name: 'A5', w: 14.8, h: 21.0 },
+                                            { name: 'A6', w: 10.5, h: 14.8 },
+                                            { name: 'Logo 8x8', w: 8.0, h: 8.0 },
+                                            { name: 'Logo 10x10', w: 10.0, h: 10.0 },
+                                        ]"
+                                        :key="tpl.name"
+                                        @click="applyImageTemplateSize(tpl.w, tpl.h)"
+                                        class="py-1.5 px-1 text-[8.5px] font-extrabold uppercase rounded-lg border border-sky-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-sky-300 dark:hover:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-850 text-slate-750 dark:text-slate-350 transition-all hover:scale-102 active:scale-98 cursor-pointer text-center shadow-xs"
+                                        type="button"
+                                        :title="`Skalakan gambar proporsional ke ukuran maks ${tpl.w} x ${tpl.h} cm`"
+                                    >
+                                        {{ tpl.name }}
+                                    </button>
+                                </div>
+                                <span
+                                    class="block text-[7.5px] text-slate-400 dark:text-slate-500 italic leading-normal"
+                                >
+                                    * Skala gambar akan disesuaikan secara proporsional sesuai rasio asli (bebas distorsi).
+                                </span>
+
+                                <!-- Tombol Potong Gambar di Kanvas -->
+                                <div class="pt-1">
+                                    <button
+                                        @click="openCropForSelected"
+                                        class="w-full py-2 px-3 rounded-xl bg-sky-600/10 hover:bg-sky-600 border border-sky-200/50 dark:border-slate-800 text-sky-700 dark:text-sky-400 hover:text-white dark:hover:text-white font-bold text-xs transition-all duration-300 flex items-center justify-center gap-1.5 hover:scale-102 active:scale-98 cursor-pointer"
+                                        type="button"
+                                    >
+                                        <PhCrop :size="13" weight="bold" />
+                                        <span>Potong Gambar (Crop)</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                         <div
                             @dragover="onDragOver"
                             @dragleave="onDragLeave"
