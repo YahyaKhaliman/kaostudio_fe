@@ -89,6 +89,28 @@ export const useConfiguratorStore = defineStore('configurator', () => {
   const colorsData = ref<WarnaTersediaResponse>({})
   const tarifJasaData = ref<TarifJasaItem[]>([])
   const isApiLoading = ref<boolean>(false)
+  const isApiError = ref<boolean>(false)
+  const apiErrorMessage = ref<string>('')
+  const isOffline = ref<boolean>(typeof navigator !== 'undefined' ? !navigator.onLine : false)
+
+  // Status apakah aplikasi sedang menggunakan data konstan fallback bawaan FE
+  const isUsingFallbackData = computed(() => {
+    return !isApiLoading.value && (isApiError.value || isOffline.value || Object.keys(productsData.value).length === 0)
+  })
+
+  // Listener status jaringan internet browser
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', () => {
+      isOffline.value = false
+      // Coba sinkronisasi otomatis ketika koneksi kembali terhubung
+      loadInitialData()
+    })
+    window.addEventListener('offline', () => {
+      isOffline.value = true
+      isApiError.value = true
+      apiErrorMessage.value = 'Koneksi internet terputus. Menggunakan data model & warna standar (offline).'
+    })
+  }
 
   // Getters computed untuk memproses warna & produk secara dinamis
   const activeColors = computed(() => {
@@ -166,6 +188,18 @@ export const useConfiguratorStore = defineStore('configurator', () => {
 
   const loadInitialData = async () => {
     isApiLoading.value = true
+    isApiError.value = false
+    apiErrorMessage.value = ''
+
+    // Pengecekan awal status koneksi internet browser
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      isOffline.value = true
+      isApiError.value = true
+      apiErrorMessage.value = 'Tidak ada koneksi internet. Menampilkan data model dan warna standar (offline).'
+      isApiLoading.value = false
+      return
+    }
+
     try {
       const [prod, colors, tarif] = await Promise.all([
         fetchProduk(),
@@ -175,14 +209,22 @@ export const useConfiguratorStore = defineStore('configurator', () => {
       productsData.value = prod.items
       colorsData.value = colors
       tarifJasaData.value = tarif
+      isApiError.value = false
+      isOffline.value = false
       
       // Setup nilai awal default jika data produk tersedia
       const fabrics = Object.keys(prod.items)
       if (fabrics.length > 0 && fabrics[0]) {
         selectedFabric.value = fabrics[0]
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Gagal memuat data referensi backend:', e)
+      isApiError.value = true
+      const isNetworkOff = typeof navigator !== 'undefined' && !navigator.onLine
+      isOffline.value = isNetworkOff
+      apiErrorMessage.value = isNetworkOff
+        ? 'Tidak ada koneksi internet. Menampilkan data model dan warna standar (offline).'
+        : 'Tidak terhubung ke server. Menampilkan data model dan warna standar (offline).'
     } finally {
       isApiLoading.value = false
     }
@@ -364,6 +406,10 @@ export const useConfiguratorStore = defineStore('configurator', () => {
     activeColors,
     activeProduct,
     isApiLoading,
+    isApiError,
+    isOffline,
+    apiErrorMessage,
+    isUsingFallbackData,
     loadInitialData,
     canvasStates,
     frontDesignUrl,

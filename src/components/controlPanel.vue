@@ -711,10 +711,14 @@ watch(
         ></div>
 
         <!-- Header Panel Kontrol: Tombol Sembunyikan Panel -->
-        <div class="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
-            <h3 class="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2">
+        <div
+            class="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800"
+        >
+            <h3
+                class="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2"
+            >
                 <span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
-                Panel Editor & Opsi
+                Panel Editor
             </h3>
             <button
                 @click="emit('toggle-panel')"

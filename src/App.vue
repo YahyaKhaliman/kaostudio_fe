@@ -19,6 +19,7 @@ import {
     PhEye,
     PhEyeSlash,
     PhSidebarSimple,
+    PhWifiSlash,
 } from "@phosphor-icons/vue";
 import { useConfiguratorStore } from "./stores/configurator";
 import { useAuthStore } from "./stores/authStore";
@@ -88,11 +89,13 @@ const togglePanel = () => {
         // Kalibrasi ulang koordinat mouse Fabric.js setelah animasi transisi CSS 350ms & 520ms selesai
         setTimeout(() => {
             if (cRef?.syncCanvasOffset) cRef.syncCanvasOffset();
-            else if (cRef?.fabricCanvas?.calcOffset) cRef.fabricCanvas.calcOffset();
+            else if (cRef?.fabricCanvas?.calcOffset)
+                cRef.fabricCanvas.calcOffset();
         }, 350);
         setTimeout(() => {
             if (cRef?.syncCanvasOffset) cRef.syncCanvasOffset();
-            else if (cRef?.fabricCanvas?.calcOffset) cRef.fabricCanvas.calcOffset();
+            else if (cRef?.fabricCanvas?.calcOffset)
+                cRef.fabricCanvas.calcOffset();
         }, 520);
     });
 };
@@ -273,7 +276,11 @@ onMounted(() => {
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     // Muat data awal referensi produk dan warna dari API backend
-    store.loadInitialData();
+    store.loadInitialData().then(() => {
+        if (store.isUsingFallbackData && store.apiErrorMessage) {
+            triggerToast(store.apiErrorMessage, "info");
+        }
+    });
     checkAndLoadSharedDesign();
 
     // Muat preferensi mode gelap
@@ -474,7 +481,17 @@ const handleUpdateRotation = (angle: number) => {
                         class="w-10 h-10 object-contain rounded-xl shadow-md border border-sky-100/50 dark:border-slate-700/60 bg-white/10 group-hover:scale-105 transition-transform duration-300"
                     />
                     <span
-                        class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full"
+                        class="absolute -bottom-0.5 -right-0.5 w-3 h-3 border-2 border-white dark:border-slate-900 rounded-full transition-colors duration-300"
+                        :class="
+                            store.isUsingFallbackData
+                                ? 'bg-amber-500'
+                                : 'bg-emerald-500'
+                        "
+                        :title="
+                            store.isUsingFallbackData
+                                ? 'Mode Offline: Menggunakan data standar'
+                                : 'Terhubung ke server'
+                        "
                     ></span>
                 </div>
                 <div>
@@ -485,9 +502,22 @@ const handleUpdateRotation = (angle: number) => {
                             KaoStudio
                         </h1>
                         <span
-                            class="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 hidden sm:inline-block"
+                            v-if="store.isUsingFallbackData"
+                            class="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25 flex items-center gap-1"
                         >
-                            PRO
+                            <span
+                                class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"
+                            ></span>
+                            Offline
+                        </span>
+                        <span
+                            v-else
+                            class="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 flex items-center gap-1"
+                        >
+                            <span
+                                class="w-1.5 h-1.5 rounded-full bg-emerald-500"
+                            ></span>
+                            Online
                         </span>
                     </div>
                     <p
@@ -974,15 +1004,17 @@ const handleUpdateRotation = (angle: number) => {
             </div>
         </Transition>
 
-        <!-- Toast Notification (Login / Logout Success Status) -->
+        <!-- Toast Notification (Login / Logout / App Status) -->
         <Transition name="fade">
             <div
                 v-if="toastMessage"
-                class="fixed top-20 left-1/2 -translate-x-1/2 z-[110] max-w-md w-[calc(100%-2rem)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border rounded-2xl shadow-2xl p-4 flex items-center gap-3 animate-in slide-in-from-top duration-300"
+                class="fixed top-5 left-1/2 -translate-x-1/2 z-[110] max-w-md w-[calc(100%-2rem)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border rounded-2xl shadow-2xl p-3.5 sm:p-4 flex items-center gap-3 animate-in slide-in-from-top-4 duration-300"
                 :class="
                     toastType === 'success'
                         ? 'border-emerald-500/40 text-emerald-950 dark:text-emerald-100'
-                        : 'border-sky-500/40 text-sky-950 dark:text-sky-100'
+                        : store.isUsingFallbackData
+                          ? 'border-amber-500/40 text-amber-950 dark:text-amber-100'
+                          : 'border-sky-500/40 text-sky-950 dark:text-sky-100'
                 "
             >
                 <div
@@ -990,11 +1022,18 @@ const handleUpdateRotation = (angle: number) => {
                     :class="
                         toastType === 'success'
                             ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                            : 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
+                            : store.isUsingFallbackData
+                              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                              : 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
                     "
                 >
                     <PhCheckCircle
                         v-if="toastType === 'success'"
+                        :size="22"
+                        weight="bold"
+                    />
+                    <PhWifiSlash
+                        v-else-if="store.isUsingFallbackData"
                         :size="22"
                         weight="bold"
                     />
@@ -1006,6 +1045,8 @@ const handleUpdateRotation = (angle: number) => {
                 <button
                     @click="toastMessage = null"
                     class="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+                    title="Tutup Notifikasi"
+                    type="button"
                 >
                     <PhX :size="16" />
                 </button>
