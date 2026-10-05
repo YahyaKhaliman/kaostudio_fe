@@ -71,6 +71,10 @@ import preset1Img from "../assets/presets/1.png";
 import preset2Img from "../assets/presets/2.png";
 import preset3Img from "../assets/presets/3.png";
 import preset4Img from "../assets/presets/4.png";
+import preset5Img from "../assets/presets/5.png";
+import preset6Img from "../assets/presets/6.png";
+import preset7Img from "../assets/presets/7.png";
+import preset8Img from "../assets/presets/8.png";
 
 const jerseyPresets = [
     {
@@ -88,6 +92,25 @@ const jerseyPresets = [
     {
         name: "Motif 4",
         url: preset4Img,
+    },
+];
+
+const imagePresets = [
+    {
+        name: "Preset 5",
+        url: preset5Img,
+    },
+    {
+        name: "Preset 6",
+        url: preset6Img,
+    },
+    {
+        name: "Preset 7",
+        url: preset7Img,
+    },
+    {
+        name: "Preset 8",
+        url: preset8Img,
     },
 ];
 
@@ -374,12 +397,14 @@ const shirtOptions = computed<ShirtOption[]>(() => {
                 fabric: "POLO LACOS CVC",
                 model: "polo",
             },
+            /*
             {
                 id: "jersey",
                 label: "Jersey Custom Motif",
                 fabric: "",
                 model: "jersey",
             },
+            */
         );
         return options;
     }
@@ -421,6 +446,7 @@ const shirtOptions = computed<ShirtOption[]>(() => {
         }
     });
 
+    /*
     // Tambahkan tepat SATU opsi Jersey tunggal dengan keterangan bahan kosong
     options.push({
         id: "jersey-custom",
@@ -428,6 +454,7 @@ const shirtOptions = computed<ShirtOption[]>(() => {
         fabric: "",
         model: "jersey",
     });
+    */
 
     return options;
 });
@@ -2289,6 +2316,46 @@ watch(
                                 class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"
                             ></span>
                             {{ uploadError }}
+                        </div>
+
+                        <!-- Preset Desain Pilihan (Preset 5 - 8 untuk model selain jersey) -->
+                        <div
+                            v-if="store.currentShirtType !== 'jersey'"
+                            class="space-y-2 pt-1"
+                        >
+                            <div class="flex items-center justify-between">
+                                <label
+                                    class="block text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider"
+                                >
+                                    Preset Desain Sablon:
+                                </label>
+                                <span
+                                    class="text-[8.5px] font-semibold text-sky-600 dark:text-sky-400"
+                                >
+                                    Klik untuk pasang
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-4 gap-2">
+                                <button
+                                    v-for="preset in imagePresets"
+                                    :key="preset.name"
+                                    @click="emit('add-image', preset.url)"
+                                    type="button"
+                                    class="aspect-square rounded-xl border border-slate-200 dark:border-slate-800 hover:border-sky-500 bg-slate-50 dark:bg-slate-950/60 overflow-hidden relative group p-1.5 transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:scale-[1.03] active:scale-95 flex items-center justify-center"
+                                    :title="`Klik untuk memasang ${preset.name} ke kaos`"
+                                >
+                                    <img
+                                        :src="preset.url"
+                                        :alt="preset.name"
+                                        class="w-full h-full object-contain pointer-events-none group-hover:scale-105 transition-transform duration-200"
+                                    />
+                                    <div
+                                        class="absolute inset-0 bg-sky-950/70 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center text-[8px] font-black text-white uppercase tracking-wider rounded-xl backdrop-blur-[1px]"
+                                    >
+                                        + Pasang
+                                    </div>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Galeri Cache Gambar -->
