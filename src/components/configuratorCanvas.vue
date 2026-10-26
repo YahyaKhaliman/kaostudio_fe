@@ -626,6 +626,7 @@ const initFabricCanvas = () => {
         height: canvasHeight.value,
         preserveObjectStacking: true,
         backgroundColor: "transparent",
+        uniformScaling: false,
     });
 
     // Gambar garis bantu snap secara dinamis setelah render canvas
@@ -1777,19 +1778,13 @@ const handleWidthInput = (e: Event) => {
     const obj = fabricCanvas.getActiveObject();
     if (!obj) return;
 
-    const imgW = obj.width;
-    const imgH = obj.height;
-    if (!imgW || !imgH) return;
-
-    const aspectRatio = imgW / imgH;
-    const targetHeightCm = val / aspectRatio;
+    const objW = obj.width;
+    if (!objW) return;
 
     const targetWidthPx = val * pxPerCm.value;
-    const targetHeightPx = targetHeightCm * pxPerCm.value;
 
     obj.set({
-        scaleX: targetWidthPx / imgW,
-        scaleY: targetHeightPx / imgH,
+        scaleX: targetWidthPx / objW,
     });
     obj.setCoords();
     fabricCanvas.renderAll();
@@ -1808,19 +1803,13 @@ const handleHeightInput = (e: Event) => {
     const obj = fabricCanvas.getActiveObject();
     if (!obj) return;
 
-    const imgW = obj.width;
-    const imgH = obj.height;
-    if (!imgW || !imgH) return;
+    const objH = obj.height;
+    if (!objH) return;
 
-    const aspectRatio = imgW / imgH;
-    const targetWidthCm = val * aspectRatio;
-
-    const targetWidthPx = targetWidthCm * pxPerCm.value;
     const targetHeightPx = val * pxPerCm.value;
 
     obj.set({
-        scaleX: targetWidthPx / imgW,
-        scaleY: targetHeightPx / imgH,
+        scaleY: targetHeightPx / objH,
     });
     obj.setCoords();
     fabricCanvas.renderAll();
