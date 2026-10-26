@@ -1731,31 +1731,17 @@ const updateSelectedFontSize = (val: number) => {
 const updateSelectedImageSize = (widthCm: number, heightCm: number) => {
     if (!fabricCanvas) return;
     const obj = fabricCanvas.getActiveObject();
-    if (!obj || obj.type !== "image") return;
+    if (!obj) return;
 
-    const imgW = obj.width;
-    const imgH = obj.height;
-    if (!imgW || !imgH) return;
+    const objW = obj.width;
+    const objH = obj.height;
+    if (!objW || !objH) return;
 
-    const aspectRatio = imgW / imgH;
-    const targetRatio = widthCm / heightCm;
+    const targetWidthPx = widthCm * pxPerCm.value;
+    const targetHeightPx = heightCm * pxPerCm.value;
 
-    let targetWidthCm = widthCm;
-    let targetHeightCm = heightCm;
-
-    if (aspectRatio > targetRatio) {
-        // Gambar landscape, lebar mengikuti batas template
-        targetHeightCm = widthCm / aspectRatio;
-    } else {
-        // Gambar portrait, tinggi mengikuti batas template
-        targetWidthCm = heightCm * aspectRatio;
-    }
-
-    const targetWidthPx = targetWidthCm * pxPerCm.value;
-    const targetHeightPx = targetHeightCm * pxPerCm.value;
-
-    const scaleX = targetWidthPx / imgW;
-    const scaleY = targetHeightPx / imgH;
+    const scaleX = targetWidthPx / objW;
+    const scaleY = targetHeightPx / objH;
 
     obj.set({
         scaleX: scaleX,

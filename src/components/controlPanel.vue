@@ -2354,7 +2354,7 @@ watch(
                                         @click="applyImageTemplateSize(tpl.w, tpl.h)"
                                         class="py-1.5 px-1 text-[8.5px] font-extrabold uppercase rounded-lg border border-sky-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-sky-300 dark:hover:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-850 text-slate-750 dark:text-slate-350 transition-all hover:scale-102 active:scale-98 cursor-pointer text-center shadow-xs"
                                         type="button"
-                                        :title="`Skalakan gambar proporsional ke ukuran maks ${tpl.w} x ${tpl.h} cm`"
+                                        :title="`Sesuaikan ukuran objek ke ${tpl.w} x ${tpl.h} cm`"
                                     >
                                         {{ tpl.name }}
                                     </button>
@@ -2362,7 +2362,7 @@ watch(
                                 <span
                                     class="block text-[7.5px] text-slate-400 dark:text-slate-500 italic leading-normal"
                                 >
-                                    * Skala gambar akan disesuaikan secara proporsional sesuai rasio asli (bebas distorsi).
+                                    * Ukuran lebar dan panjang objek akan disesuaikan dengan template yang dipilih.
                                 </span>
 
                                 <!-- Tombol Potong Gambar di Kanvas -->

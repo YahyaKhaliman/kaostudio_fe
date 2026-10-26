@@ -7,7 +7,7 @@ export interface ReleaseNote {
 
 export const changelogHistory: ReleaseNote[] = [
     {
-        version: "1.3.7",
+        version: "1.3.8",
         date: "26 Oktober 2026",
         title: "Peningkatan UI dan UX",
         badge: "Versi Terbaru",
